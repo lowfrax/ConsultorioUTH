@@ -1,0 +1,54 @@
+************* navegacion linux
+(ls) mira los componentes actuales
+(cd nombe_carpeta) entra en una carpeta especifica
+(cd ..) regresa al directorio anterior 
+
+
+************ gits de creacion
+(git remote add origin (url)) conecta el repositorio local con el que esta en la nube
+(touch git.txt) crea un archivo txt
+(git clone +url) clona el repositorio en la direccion actual
+(mkdir nombre_carpeta) crea una carpeta en la direccion actual
+
+
+
+
+************ gits de actualizacion
+
+(git init) crea un repositorio de git nuevo
+(git status) mira el estatus de los archivos en commit o creados que no se han guardado
+(git add .) agrega todos los archivos al commit
+(git commit -m "mensaje") mensaje del commit
+(git push) subimos el archivo 
+(git log) mira el historial de los commits y en que rama, precionar q para salir
+(git checkout (codigo del commit))
+(git push --set-upstream origin master)) (si se creo una nueva rama local se subirá el código a la rama mencionada y si no existe se crear una nueva)
+*************** gits de manipulacion de ramas
+
+(git branch) visualiza las ramas existentes de forma local
+(git branch -r) visualizacion de ramas en el repositorio
+
+(git switch -c "nombre de la rama") crea una nueva rama
+(git switch (nombre de la rama)) cambio de rama.
+(git push origin (nombreRama)) subida de commits
+(git push -u origin (nombreRama)) subida de la rama de origen a github
+(git push origin --delete (rama)) eliminacion de una rama del repositorio
+(git branch -D (rama)) eliminacion de la rama de forma local
+
+
+
+**************** proceso de paso de inforacion de una rama a otra
+(git add .)
+(git commit -m "")
+(git push origin (nombre de la rama origen)) subimos todos los commits pendientes a la rama actual
+
+##tenemos que hacer un cambio de rama a la rama que queremos que la informacion sea pasada
+
+(git checkout (rama))
+
+##hacemos un marge de la rama que queremos la informacion de todos los commits existentes
+
+(git merge (main))
+
+
+
