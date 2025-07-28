@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DBProvider {
   static Database? _db;
@@ -173,5 +175,74 @@ class DBProvider {
         FOREIGN KEY(expediente_id) REFERENCES Expedientes(id)
       );
     ''');
+  }
+
+  /// Verifica la conexión a Firebase Firestore con manejo de errores
+  static Future<void> verificarConexionFirebase() async {
+    try {
+      // Intentar acceder a Firestore para verificar la conexión
+      final firestore = FirebaseFirestore.instance;
+
+      // Realizar una consulta simple para verificar la conexión
+      await firestore.collection('test').limit(1).get();
+
+      print('✅ Conexión exitosa a Firebase Firestore');
+      print('📊 Base de datos: ${firestore.app.name}');
+      print('🌐 Proyecto: ${firestore.app.options.projectId}');
+    } catch (e) {
+      print('❌ Error al conectar con Firebase Firestore:');
+      print('🔍 Detalles del error: $e');
+
+      // Verificar si es un error de configuración
+      if (e.toString().contains('permission-denied')) {
+        print(
+          '⚠️  Error de permisos: Verifica las reglas de seguridad de Firestore',
+        );
+      } else if (e.toString().contains('unavailable')) {
+        print('⚠️  Error de conectividad: Verifica tu conexión a internet');
+      } else if (e.toString().contains('not-found')) {
+        print(
+          '⚠️  Error de configuración: Verifica la configuración de Firebase',
+        );
+      }
+
+      // Re-lanzar el error para que pueda ser manejado por el código que llama a esta función
+      rethrow;
+    }
+  }
+
+  /// Verifica la conexión a Firebase Auth
+  static Future<void> verificarConexionFirebaseAuth() async {
+    try {
+      // Intentar acceder a Firebase Auth para verificar la conexión
+      final auth = FirebaseAuth.instance;
+
+      print('✅ Conexión exitosa a Firebase Auth');
+      print('🔐 Proyecto: ${auth.app.options.projectId}');
+    } catch (e) {
+      print('❌ Error al conectar con Firebase Auth:');
+      print('🔍 Detalles del error: $e');
+      rethrow;
+    }
+  }
+
+  /// Verifica todas las conexiones de Firebase
+  static Future<void> verificarTodasLasConexionesFirebase() async {
+    print('🔍 Iniciando verificación de conexiones Firebase...');
+
+    try {
+      // Verificar Firestore
+      await verificarConexionFirebase();
+
+      // Verificar Auth
+      await verificarConexionFirebaseAuth();
+
+      print(
+        '🎉 Todas las conexiones a Firebase están funcionando correctamente',
+      );
+    } catch (e) {
+      print('💥 Error general en la verificación de Firebase: $e');
+      rethrow;
+    }
   }
 }
