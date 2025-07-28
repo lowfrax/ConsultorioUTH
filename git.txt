@@ -8,9 +8,11 @@
 (git remote add origin (url)) conecta el repositorio local con el que esta en la nube
 (touch git.txt) crea un archivo txt
 (git clone +url) clona el repositorio en la direccion actual
+(git clone --branch <nombre-rama> --single-branch <url-del-repo>) clona una rama en especifico del repositorio
 (mkdir nombre_carpeta) crea una carpeta en la direccion actual
 
-(rm -rf "nombre de carpeta") elimina el clone realizado
+Remove-Item -Recurse -Force .\ConsultorioUTH
+
 
 
 
