@@ -15,8 +15,12 @@
 
 ************ gits de actualizacion
 
+(git fetch) verifica si existen cambios realizados en el repositorio
+(git pull origin test-1) trae todos los cambios en base a esa rama (no confundir ramas o el local se mesclara)
+(git reset --hard HEAD@{1} ) regresa la rama local al estado anterior del pull en 1 salto
+
 (git init) crea un repositorio de git nuevo
-(git status) mira el estatus de los archivos en commit o creados que no se han guardado
+(git status) mira el estatus de los archivos en commit o creados que no se han guardado, o diferencias entre remoto y local
 (git add .) agrega todos los archivos al commit
 (git commit -m "mensaje") mensaje del commit
 (git push) subimos el archivo 
