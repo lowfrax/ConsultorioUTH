@@ -1,7 +1,14 @@
+import 'package:consultorioequipo1/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
 
 void main() {
+//inicializacion de firebase
+await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+);
+
   runApp(const MyApp());
 }
 

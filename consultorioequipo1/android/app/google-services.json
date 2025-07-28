@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "32189873554",
-    "project_id": "hackatonuth",
-    "storage_bucket": "hackatonuth.firebasestorage.app"
+    "project_number": "237238844492",
+    "project_id": "consultoriouth-35d4e",
+    "storage_bucket": "consultoriouth-35d4e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:32189873554:android:4abf45f8bb717ff780d54b",
+        "mobilesdk_app_id": "1:237238844492:android:0797d0d5fb80b7360908e9",
         "android_client_info": {
           "package_name": "com.example.consultorioequipo1"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDGFN_GHRCRFA4yY0491W1gnYUYlyO8gTU"
+          "current_key": "AIzaSyABaaxckMvX5fpdg8EXDCvDpPwMxAXF_w0"
         }
       ],
       "services": {
