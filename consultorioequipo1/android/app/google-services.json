@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "32189873554",
+    "project_id": "hackatonuth",
+    "storage_bucket": "hackatonuth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:32189873554:android:4abf45f8bb717ff780d54b",
+        "android_client_info": {
+          "package_name": "com.example.consultorioequipo1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGFN_GHRCRFA4yY0491W1gnYUYlyO8gTU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
