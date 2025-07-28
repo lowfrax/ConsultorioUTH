@@ -1,0 +1,273 @@
+// main.dart
+import 'package:flutter/material.dart';
+import 'screens/dashboard_screen.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'MyApp',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      home: const DashboardScreen(),
+    );
+  }
+}
+
+// models/caso.dart
+class Caso {
+  final String nombre;
+  final String tipo;
+  final String procurador;
+  final String juzgado;
+  final String demandante;
+  final String demandado;
+  final String fecha;
+  String estado;
+
+  Caso({
+    required this.nombre,
+    required this.tipo,
+    required this.procurador,
+    required this.juzgado,
+    required this.demandante,
+    required this.demandado,
+    required this.fecha,
+    this.estado = 'Pendiente',
+  });
+}
+
+//lib/screens/dashboard_screen.dart
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+class Caso {
+  final String nombre;
+  final String descripcion;
+  final String juzgado;
+  final DateTime fechaLimite;
+  String estado;
+
+  Caso({
+    required this.nombre,
+    required this.descripcion,
+    required this.juzgado,
+    required this.fechaLimite,
+    required this.estado,
+  });
+}
+
+class DashboardScreen extends StatefulWidget {
+  @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  List<Caso> casos = [];
+  List<Caso> casosFiltrados = [];
+  final TextEditingController _searchController = TextEditingController();
+
+  int get casosTotales => casos.length;
+  int get pendientes =>
+      casos.where((c) => c.estado == 'pendiente').length;
+  int get enProceso =>
+      casos.where((c) => c.estado == 'en proceso').length;
+  int get finalizados =>
+      casos.where((c) => c.estado == 'finalizado').length;
+  int get retrasados =>
+      casos.where((c) => c.estado == 'retrasado').length;
+
+  void agregarCaso(Caso nuevoCaso) {
+    setState(() {
+      // Verifica si la fecha ya pasó y el caso no está finalizado
+      if (nuevoCaso.fechaLimite.isBefore(DateTime.now()) &&
+          nuevoCaso.estado != 'finalizado') {
+        nuevoCaso.estado = 'retrasado';
+      }
+      casos.add(nuevoCaso);
+      casosFiltrados = List.from(casos);
+    });
+  }
+
+  void filtrarCasos(String query) {
+    setState(() {
+      casosFiltrados = casos
+          .where((c) =>
+              c.nombre.toLowerCase().contains(query.toLowerCase()) ||
+              c.descripcion.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
+  }
+
+  void cambiarEstado(Caso caso, String nuevoEstado) {
+    setState(() {
+      caso.estado = nuevoEstado;
+    });
+  }
+
+  Color obtenerColorEstado(String estado) {
+    switch (estado) {
+      case 'pendiente':
+        return Colors.orange;
+      case 'en proceso':
+        return Colors.blue;
+      case 'finalizado':
+        return Colors.green;
+      case 'retrasado':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    casosFiltrados = List.from(casos);
+    _searchController.addListener(() {
+      filtrarCasos(_searchController.text);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('MyApp'),
+        backgroundColor: Colors.green,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                final nuevoCaso = await Navigator.pushNamed(context, '/form')
+                    as Caso?;
+                if (nuevoCaso != null) {
+                  agregarCaso(nuevoCaso);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+              ),
+              child: const Text('Nuevo Caso'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'Buscar caso',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatusCard('Totales', casosTotales, Colors.grey),
+                _buildStatusCard('Pendientes', pendientes, Colors.orange),
+                _buildStatusCard('En Proceso', enProceso, Colors.blue),
+                _buildStatusCard('Finalizados', finalizados, Colors.green),
+                _buildStatusCard('Retrasados', retrasados, Colors.red),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: ListView.builder(
+                itemCount: casosFiltrados.length,
+                itemBuilder: (context, index) {
+                  final caso = casosFiltrados[index];
+                  final estadoColor = obtenerColorEstado(caso.estado);
+                  return GestureDetector(
+                    onLongPress: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.play_arrow),
+                              title: const Text('En proceso'),
+                              onTap: () {
+                                cambiarEstado(caso, 'en proceso');
+                                Navigator.pop(context);
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.check),
+                              title: const Text('Finalizado'),
+                              onTap: () {
+                                cambiarEstado(caso, 'finalizado');
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Card(
+                      elevation: 3,
+                      child: ListTile(
+                        title: Text(caso.nombre),
+                        subtitle: Text(caso.descripcion),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 4, horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: estadoColor,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                caso.estado.toUpperCase(),
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 12),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(DateFormat('yyyy-MM-dd')
+                                .format(caso.fechaLimite)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(String label, int count, Color color) {
+    return Column(
+      children: [
+        Text(
+          count.toString(),
+          style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: color),
+        ),
+        Text(label),
+      ],
+    );
+  }
+}
+
+
+
+// screens/case_form_screen.dart
+// sin cambios excepto el campo estado predeterminado que ya está considerado al crear Caso
