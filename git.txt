@@ -10,6 +10,8 @@
 (git clone +url) clona el repositorio en la direccion actual
 (mkdir nombre_carpeta) crea una carpeta en la direccion actual
 
+(rm -rf "nombre de carpeta") elimina el clone realizado
+
 
 
 
