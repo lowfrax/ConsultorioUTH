@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'data/recursos/firebase_service.dart';
 import 'data/recursos/db.dart';
+import 'data/recursos/auth_service.dart';
 import 'test_firebase.dart';
+import 'test_login.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +22,9 @@ void main() async {
     // Ejecutar pruebas de Firebase
     await FirebaseTest.ejecutarPruebas();
 
+    // Ejecutar pruebas específicas del login
+    await LoginTest.ejecutarPruebasLogin();
+
     // Realizar prueba exhaustiva de conexión
     final resultados = await FirebaseService.probarConexionExhaustiva();
 
@@ -34,23 +39,13 @@ void main() async {
         print('🎉 Conexión completa a Firebase establecida correctamente');
 
         // Verificar estructura de la base de datos
-        await DatabaseService.verificarEstructuraBD();
+        await AuthService.verificarEstructuraBD();
 
-        // Verificar si existe el usuario de prueba
-        final usuarioExiste = await DatabaseService.verificarUsuario(
-          'lowfrax',
-          'casa',
-        );
-
-        if (!usuarioExiste) {
-          print('🔧 Usuario de prueba no existe, creando...');
-          await DatabaseService.crearUsuarioPrueba();
-        } else {
-          print('✅ Usuario de prueba ya existe');
-        }
+        // Verificar usuario específico
+        await LoginTest.verificarUsuario('lowfrax', 'casa');
 
         // Listar usuarios para verificación
-        await DatabaseService.listarUsuarios();
+        await LoginTest.listarUsuarios();
       } else {
         print('⚠️  Problemas detectados en la conexión a Firebase');
         print('📊 Éxito: $exitosas/$total');

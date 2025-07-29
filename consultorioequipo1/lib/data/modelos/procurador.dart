@@ -6,8 +6,8 @@ class Procurador {
   final String usuario;
   final String password;
   final String email;
-  final int telefono;
-  final int nCuenta;
+  final String telefono; // Cambiado a String para manejar el campo con tilde
+  final String nCuenta; // Cambiado a String para consistencia
   final DocumentReference? idClase;
   final DocumentReference? idCuatrimestre;
   final DocumentReference? idRol;
@@ -39,8 +39,8 @@ class Procurador {
       usuario: data['usuario'] ?? '',
       password: data['password'] ?? '',
       email: data['email'] ?? '',
-      telefono: data['telefono'] ?? 0,
-      nCuenta: data['n_cuenta'] ?? 0,
+      telefono: data['teléfono']?.toString() ?? '', // Maneja el campo con tilde
+      nCuenta: data['n_cuenta']?.toString() ?? '', // Convertido a String
       idClase: data['id_clase'],
       idCuatrimestre: data['id_cuatrimestre'],
       idRol: data['id_rol'],
@@ -56,7 +56,7 @@ class Procurador {
       'usuario': usuario,
       'password': password,
       'email': email,
-      'telefono': telefono,
+      'teléfono': telefono, // Campo con tilde
       'n_cuenta': nCuenta,
       'id_clase': idClase,
       'id_cuatrimestre': idCuatrimestre,

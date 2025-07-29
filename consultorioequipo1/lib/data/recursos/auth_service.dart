@@ -1,21 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../modelos/procurador.dart';
-import '../modelos/rol_procurador.dart';
 
-/// Resultado de la autenticación
+/// Resultado de la autenticación con validación de rol
 class AuthResult {
   final bool success;
   final String? message;
-  final Procurador? procurador;
-  final RolProcurador? rol;
+  final Map<String, dynamic>? userData;
+  final Map<String, dynamic>? roleData;
 
-  AuthResult({required this.success, this.message, this.procurador, this.rol});
+  AuthResult({
+    required this.success,
+    this.message,
+    this.userData,
+    this.roleData,
+  });
 }
 
 class AuthService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Autentica un usuario verificando credenciales y rol
+  /// Autentica un usuario verificando credenciales y rol de alumno
   static Future<AuthResult> login(String usuario, String password) async {
     try {
       print('🔐 Iniciando proceso de autenticación...');
@@ -40,60 +43,70 @@ class AuthService {
       }
 
       final procuradorDoc = procuradorQuery.docs.first;
-      final procurador = Procurador.fromFirestore(procuradorDoc);
+      final userData = procuradorDoc.data();
 
-      print('✅ Procurador encontrado: ${procurador.nombre}');
-      print('📋 ID del procurador: ${procurador.id}');
+      print('✅ Usuario encontrado:');
+      print('   - ID: ${procuradorDoc.id}');
+      print('   - Nombre: ${userData['nombre']}');
+      print('   - Email: ${userData['email']}');
+      print('   - Usuario: ${userData['usuario']}');
+      print('   - ID Rol: ${userData['id_rol']}');
 
-      // 2. Verificar que el procurador no esté eliminado
-      if (procurador.eliminado) {
-        print('❌ El procurador está marcado como eliminado');
-        return AuthResult(success: false, message: 'Cuenta deshabilitada');
-      }
-
-      // 3. Verificar que tenga un rol asignado
-      if (procurador.idRol == null) {
+      // 2. Verificar que tenga un rol asignado
+      if (userData['id_rol'] == null) {
         print('❌ El procurador no tiene rol asignado');
         return AuthResult(success: false, message: 'Usuario sin rol asignado');
       }
 
-      // 4. Obtener y verificar el rol
-      final rolDoc = await procurador.idRol!.get();
+      // 3. Obtener y verificar el rol
+      try {
+        final rolRef = userData['id_rol'] as DocumentReference;
+        final rolDoc = await rolRef.get();
 
-      if (!rolDoc.exists) {
-        print('❌ El rol referenciado no existe');
-        return AuthResult(success: false, message: 'Rol no encontrado');
-      }
+        if (!rolDoc.exists) {
+          print('❌ El rol referenciado no existe');
+          return AuthResult(success: false, message: 'Rol no encontrado');
+        }
 
-      final rol = RolProcurador.fromFirestore(rolDoc);
-      print('🎭 Rol encontrado: ${rol.rol}');
+        final roleData = rolDoc.data() as Map<String, dynamic>;
+        print('🎭 Rol encontrado:');
+        print('   - ID: ${rolDoc.id}');
+        print('   - Rol: ${roleData['rol']}');
+        print('   - Eliminado: ${roleData['eliminado']}');
 
-      // 5. Verificar que el rol no esté eliminado
-      if (rol.eliminado) {
-        print('❌ El rol está marcado como eliminado');
-        return AuthResult(success: false, message: 'Rol deshabilitado');
-      }
+        // 4. Verificar que el rol no esté eliminado
+        if (roleData['eliminado'] == true) {
+          print('❌ El rol está marcado como eliminado');
+          return AuthResult(success: false, message: 'Rol deshabilitado');
+        }
 
-      // 6. Verificar que el rol sea "alumno"
-      if (rol.rol.toLowerCase() != 'alumno') {
-        print('❌ El rol no es "alumno": ${rol.rol}');
+        // 5. Verificar que el rol sea "alumno"
+        if (roleData['rol'] != 'alumno') {
+          print('❌ El rol no es "alumno": ${roleData['rol']}');
+          return AuthResult(
+            success: false,
+            message: 'Acceso denegado: Solo alumnos pueden acceder',
+          );
+        }
+
+        print('🎉 Autenticación exitosa');
+        print('👤 Usuario: ${userData['nombre']}');
+        print('🎭 Rol: ${roleData['rol']}');
+        print('📧 Email: ${userData['email']}');
+
+        return AuthResult(
+          success: true,
+          message: 'Autenticación exitosa',
+          userData: userData,
+          roleData: roleData,
+        );
+      } catch (e) {
+        print('❌ Error al verificar rol: $e');
         return AuthResult(
           success: false,
-          message: 'Acceso denegado: Solo alumnos pueden acceder',
+          message: 'Error al verificar rol. Intenta nuevamente.',
         );
       }
-
-      print('🎉 Autenticación exitosa');
-      print('👤 Usuario: ${procurador.nombre}');
-      print('🎭 Rol: ${rol.rol}');
-      print('📧 Email: ${procurador.email}');
-
-      return AuthResult(
-        success: true,
-        message: 'Autenticación exitosa',
-        procurador: procurador,
-        rol: rol,
-      );
     } catch (e) {
       print('💥 Error durante la autenticación: $e');
       return AuthResult(
@@ -120,12 +133,12 @@ class AuthService {
   }
 
   /// Obtiene información del procurador por ID
-  static Future<Procurador?> obtenerProcuradorPorId(String id) async {
+  static Future<Map<String, dynamic>?> obtenerProcuradorPorId(String id) async {
     try {
       final doc = await _firestore.collection('Procuradores').doc(id).get();
 
       if (doc.exists) {
-        return Procurador.fromFirestore(doc);
+        return doc.data();
       }
 
       return null;
@@ -135,21 +148,59 @@ class AuthService {
     }
   }
 
-  /// Obtiene el rol de un procurador
-  static Future<RolProcurador?> obtenerRolProcurador(
-    DocumentReference rolRef,
-  ) async {
+  /// Verifica la estructura de la base de datos
+  static Future<void> verificarEstructuraBD() async {
     try {
-      final doc = await rolRef.get();
+      print('🔍 Verificando estructura de la base de datos...');
 
-      if (doc.exists) {
-        return RolProcurador.fromFirestore(doc);
+      // Verificar colección Procuradores
+      final procuradores = await _firestore
+          .collection('Procuradores')
+          .limit(1)
+          .get();
+      print(
+        '📋 Colección Procuradores: ${procuradores.docs.length} documentos',
+      );
+
+      if (procuradores.docs.isNotEmpty) {
+        final data = procuradores.docs.first.data();
+        print('📊 Campos del procurador:');
+        data.keys.forEach(
+          (key) => print('   - $key: ${data[key].runtimeType}'),
+        );
       }
 
-      return null;
+      // Verificar colección Rol_Procurador
+      final roles = await _firestore
+          .collection('Rol_Procurador')
+          .limit(1)
+          .get();
+      print('🎭 Colección Rol_Procurador: ${roles.docs.length} documentos');
+
+      if (roles.docs.isNotEmpty) {
+        final data = roles.docs.first.data();
+        print('📊 Campos del rol:');
+        data.keys.forEach(
+          (key) => print('   - $key: ${data[key].runtimeType}'),
+        );
+      }
+
+      // Verificar colección Clase
+      final clases = await _firestore.collection('Clase').limit(1).get();
+      print('📚 Colección Clase: ${clases.docs.length} documentos');
+
+      // Verificar colección Cuatrimestres
+      final cuatrimestres = await _firestore
+          .collection('Cuatrimestres')
+          .limit(1)
+          .get();
+      print(
+        '📅 Colección Cuatrimestres: ${cuatrimestres.docs.length} documentos',
+      );
+
+      print('✅ Estructura de base de datos verificada');
     } catch (e) {
-      print('❌ Error al obtener rol: $e');
-      return null;
+      print('❌ Error al verificar estructura: $e');
     }
   }
 }
