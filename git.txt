@@ -36,6 +36,7 @@ Remove-Item -Recurse -Force .\ConsultorioUTH
 (git branch) visualiza las ramas existentes de forma local
 (git branch -r) visualizacion de ramas en el repositorio
 
+(git checkout nombre-de-la-rama) cambio de la rama seleccionada
 (git switch -c "nombre de la rama") crea una nueva rama
 (git switch (nombre de la rama)) cambio de rama.
 (git push origin (nombreRama)) subida de commits
