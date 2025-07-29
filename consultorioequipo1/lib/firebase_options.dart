@@ -41,12 +41,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCCx3MhOX0VIKaLDFdZViU-iRUTYXTb9Uo',
-    appId: '1:32189873554:web:0d37b977273bf35c80d54b',
-    messagingSenderId: '32189873554',
-    projectId: 'hackatonuth',
-    authDomain: 'hackatonuth.firebaseapp.com',
-    storageBucket: 'hackatonuth.firebasestorage.app',
+    apiKey: 'AIzaSyC5wOl8mLGZlUjSg_O9LraAuqb2wrIILFE',
+    appId: '1:134255724924:web:13bbd8c49ed9e964c97cf9',
+    messagingSenderId: '134255724924',
+    projectId: 'consultoriouth-f6798',
+    authDomain: 'consultoriouth-f6798.firebaseapp.com',
+    storageBucket: 'consultoriouth-f6798.firebasestorage.app',
     measurementId: 'G-45XNM3SCHB',
   );
 
@@ -59,30 +59,30 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCkJ10YaIhbggeH9pJN1JpWWEbYxLW9w14',
-    appId: '1:32189873554:ios:27566bbb12456bef80d54b',
-    messagingSenderId: '32189873554',
-    projectId: 'hackatonuth',
-    storageBucket: 'hackatonuth.firebasestorage.app',
+    apiKey: 'AIzaSyC5wOl8mLGZlUjSg_O9LraAuqb2wrIILFE',
+    appId: '1:134255724924:ios:13bbd8c49ed9e964c97cf9',
+    messagingSenderId: '134255724924',
+    projectId: 'consultoriouth-f6798',
+    storageBucket: 'consultoriouth-f6798.firebasestorage.app',
     iosBundleId: 'com.example.consultorioequipo1',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCkJ10YaIhbggeH9pJN1JpWWEbYxLW9w14',
-    appId: '1:32189873554:ios:27566bbb12456bef80d54b',
-    messagingSenderId: '32189873554',
-    projectId: 'hackatonuth',
-    storageBucket: 'hackatonuth.firebasestorage.app',
+    apiKey: 'AIzaSyC5wOl8mLGZlUjSg_O9LraAuqb2wrIILFE',
+    appId: '1:134255724924:ios:13bbd8c49ed9e964c97cf9',
+    messagingSenderId: '134255724924',
+    projectId: 'consultoriouth-f6798',
+    storageBucket: 'consultoriouth-f6798.firebasestorage.app',
     iosBundleId: 'com.example.consultorioequipo1',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCCx3MhOX0VIKaLDFdZViU-iRUTYXTb9Uo',
-    appId: '1:32189873554:web:f783a821a736e30080d54b',
-    messagingSenderId: '32189873554',
-    projectId: 'hackatonuth',
-    authDomain: 'hackatonuth.firebaseapp.com',
-    storageBucket: 'hackatonuth.firebasestorage.app',
+    apiKey: 'AIzaSyC5wOl8mLGZlUjSg_O9LraAuqb2wrIILFE',
+    appId: '1:134255724924:web:13bbd8c49ed9e964c97cf9',
+    messagingSenderId: '134255724924',
+    projectId: 'consultoriouth-f6798',
+    authDomain: 'consultoriouth-f6798.firebaseapp.com',
+    storageBucket: 'consultoriouth-f6798.firebasestorage.app',
     measurementId: 'G-43ZR3XQJLX',
   );
 }

@@ -31,6 +31,27 @@
 
   <title>consultorioequipo1</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Firebase Configuration -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  
+  <script>
+    // Firebase configuration for consultoriouth-f6798
+    const firebaseConfig = {
+      apiKey: "AIzaSyC5wOl8mLGZlUjSg_O9LraAuqb2wrIILFE",
+      authDomain: "consultoriouth-f6798.firebaseapp.com",
+      projectId: "consultoriouth-f6798",
+      storageBucket: "consultoriouth-f6798.firebasestorage.app",
+      messagingSenderId: "134255724924",
+      appId: "1:134255724924:web:13bbd8c49ed9e964c97cf9",
+      measurementId: "G-45XNM3SCHB"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
