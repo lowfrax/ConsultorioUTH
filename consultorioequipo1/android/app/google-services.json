@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "237238844492",
-    "project_id": "consultoriouth-35d4e",
-    "storage_bucket": "consultoriouth-35d4e.firebasestorage.app"
+    "project_number": "134255724924",
+    "project_id": "consultoriouth-f6798",
+    "storage_bucket": "consultoriouth-f6798.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:237238844492:android:0797d0d5fb80b7360908e9",
+        "mobilesdk_app_id": "1:134255724924:android:13bbd8c49ed9e964c97cf9",
         "android_client_info": {
           "package_name": "com.example.consultorioequipo1"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyABaaxckMvX5fpdg8EXDCvDpPwMxAXF_w0"
+          "current_key": "AIzaSyC5wOl8mLGZlUjSg_O9LraAuqb2wrIILFE"
         }
       ],
       "services": {
