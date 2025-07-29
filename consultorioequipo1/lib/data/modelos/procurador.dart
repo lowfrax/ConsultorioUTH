@@ -1,39 +1,69 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Procurador {
-  final int? id;
+  final String? id;
   final String nombre;
+  final String usuario;
   final String password;
   final String email;
   final int telefono;
-  final int cuatrimestreId;
-  final int eliminado;
+  final int nCuenta;
+  final DocumentReference? idClase;
+  final DocumentReference? idCuatrimestre;
+  final DocumentReference? idRol;
+  final bool eliminado;
+  final DateTime creadoEl;
+  final DateTime actualizadoEl;
 
   Procurador({
     this.id,
     required this.nombre,
+    required this.usuario,
     required this.password,
     required this.email,
     required this.telefono,
-    required this.cuatrimestreId,
-    this.eliminado = 0,
+    required this.nCuenta,
+    this.idClase,
+    this.idCuatrimestre,
+    this.idRol,
+    this.eliminado = false,
+    required this.creadoEl,
+    required this.actualizadoEl,
   });
 
-  factory Procurador.fromMap(Map<String, dynamic> map) => Procurador(
-    id: map['id'],
-    nombre: map['nombre'],
-    password: map['password'],
-    email: map['email'],
-    telefono: map['telefono'],
-    cuatrimestreId: map['cuatrimestre_id'],
-    eliminado: map['eliminado'],
-  );
+  factory Procurador.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Procurador(
+      id: doc.id,
+      nombre: data['nombre'] ?? '',
+      usuario: data['usuario'] ?? '',
+      password: data['password'] ?? '',
+      email: data['email'] ?? '',
+      telefono: data['telefono'] ?? 0,
+      nCuenta: data['n_cuenta'] ?? 0,
+      idClase: data['id_clase'],
+      idCuatrimestre: data['id_cuatrimestre'],
+      idRol: data['id_rol'],
+      eliminado: data['eliminado'] ?? false,
+      creadoEl: (data['creado_el'] as Timestamp).toDate(),
+      actualizadoEl: (data['actualizado_el'] as Timestamp).toDate(),
+    );
+  }
 
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'nombre': nombre,
-    'password': password,
-    'email': email,
-    'telefono': telefono,
-    'cuatrimestre_id': cuatrimestreId,
-    'eliminado': eliminado,
-  };
+  Map<String, dynamic> toMap() {
+    return {
+      'nombre': nombre,
+      'usuario': usuario,
+      'password': password,
+      'email': email,
+      'telefono': telefono,
+      'n_cuenta': nCuenta,
+      'id_clase': idClase,
+      'id_cuatrimestre': idCuatrimestre,
+      'id_rol': idRol,
+      'eliminado': eliminado,
+      'creado_el': Timestamp.fromDate(creadoEl),
+      'actualizado_el': Timestamp.fromDate(actualizadoEl),
+    };
+  }
 }

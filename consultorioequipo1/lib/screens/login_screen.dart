@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
+import '../data/recursos/auth_service.dart';
+import '../data/recursos/firebase_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,31 +31,74 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simular delay de login
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Verificar conexión a Firebase primero
+      final conexionFirebase =
+          await FirebaseService.verificarConexionFirestore();
 
-    // Verificar credenciales de prueba
-    if (_usernameController.text == '1' && _passwordController.text == '1') {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        );
+      if (!conexionFirebase) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ Error de conexión. Verifica tu internet.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
       }
-    } else {
+
+      // Realizar autenticación
+      final resultado = await AuthService.login(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (mounted) {
+        if (resultado.success) {
+          // Login exitoso
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ ${resultado.message}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+
+          // Navegar al dashboard
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        } else {
+          // Login fallido
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ ${resultado.message}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('💥 Error durante el login: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('❌ Usuario o contraseña incorrectos'),
+            content: Text('❌ Error inesperado. Intenta nuevamente.'),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 3),
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
@@ -229,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               SizedBox(height: 4),
                               Text(
-                                'Usuario: 1\nContraseña: 1',
+                                'Usuario: lowfrax\nContraseña: casa',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.blue,
