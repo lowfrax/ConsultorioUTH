@@ -29,7 +29,8 @@ Remove-Item -Recurse -Force .\ConsultorioUTH
 (git commit -m "mensaje") mensaje del commit
 (git push) subimos el archivo 
 (git log) mira el historial de los commits y en que rama, precionar q para salir
-(git checkout (codigo del commit))
+(git checkout (codigo del commit)) cambia de commit segun el historial
+(git checkout "rama") cambia de rama local
 (git push --set-upstream origin master)) (si se creo una nueva rama local se subirá el código a la rama mencionada y si no existe se crear una nueva)
 *************** gits de manipulacion de ramas
 
