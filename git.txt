@@ -55,7 +55,8 @@ Remove-Item -Recurse -Force .\ConsultorioUTH
 
 (git checkout (rama))
 
-##hacemos un marge de la rama que queremos la informacion de todos los commits existentes
+##hacemos un marge de la rama que queremos la informacion de todos los commits existentes, el merge funciona tal que hayq que estar
+en la rama que se quiere actualizar y especificar de la que se tomaran los datos a actualizar
 
 (git merge (main))
 
