@@ -60,5 +60,8 @@ en la rama que se quiere actualizar y especificar de la que se tomaran los datos
 
 (git merge (main))
 
+******************Traer rama remota basada en una nueva local
+git checkout -b test-1 origin/test-1
+
 
 
