@@ -64,6 +64,7 @@ en la rama que se quiere actualizar y especificar de la que se tomaran los datos
 ****************** Traer todas las ramas remotas a las locales y crearlas en caso que no existan
 
 (fetch origin "+refs/heads/*:refs/remotes/origin/*" )
+(git branch -r) muestra todas las ramas locales
 
 
 
