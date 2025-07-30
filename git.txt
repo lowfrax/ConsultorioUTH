@@ -60,7 +60,10 @@ en la rama que se quiere actualizar y especificar de la que se tomaran los datos
 
 (git merge (main))
 
-******************Traer rama remota basada en una nueva local
+****************** Traer todas las ramas remotas a las locales y crearlas en caso que no existan
+
+(fetch origin "+refs/heads/*:refs/remotes/origin/*" )
+
 
 
 
