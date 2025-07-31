@@ -3,10 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ArchivoExpediente {
   final String? id;
   final String expedienteId;
+  final String? urlArchivo;
+  final String nombreArchivo;
   final String formatoEntrada;
   final String formatoActual;
-  final String urlArchivo;
-  final String nombreArchivo;
+  final String? rutaLocal; // Nueva campo para ruta local
   final bool eliminado;
   final DateTime? creadoEl;
   final DateTime? actualizadoEl;
@@ -14,10 +15,11 @@ class ArchivoExpediente {
   ArchivoExpediente({
     this.id,
     required this.expedienteId,
+    this.urlArchivo,
+    required this.nombreArchivo,
     required this.formatoEntrada,
     required this.formatoActual,
-    required this.urlArchivo,
-    required this.nombreArchivo,
+    this.rutaLocal,
     this.eliminado = false,
     this.creadoEl,
     this.actualizadoEl,
@@ -29,10 +31,11 @@ class ArchivoExpediente {
   ) => ArchivoExpediente(
     id: documentId,
     expedienteId: map['expediente_id'] ?? '',
-    formatoEntrada: map['formato_entrada'] ?? '',
-    formatoActual: map['formato_actual'] ?? '',
     urlArchivo: map['url_archivo'] ?? '',
     nombreArchivo: map['nombre_archivo'] ?? '',
+    formatoEntrada: map['formato_entrada'] ?? '',
+    formatoActual: map['formato_actual'] ?? '',
+    rutaLocal: map['ruta_local'] ?? null,
     eliminado: map['eliminado'] ?? false,
     creadoEl: map['creado_el'] != null
         ? (map['creado_el'] as Timestamp).toDate()
@@ -44,10 +47,11 @@ class ArchivoExpediente {
 
   Map<String, dynamic> toMap() => {
     'expediente_id': expedienteId,
-    'formato_entrada': formatoEntrada,
-    'formato_actual': formatoActual,
     'url_archivo': urlArchivo,
     'nombre_archivo': nombreArchivo,
+    'formato_entrada': formatoEntrada,
+    'formato_actual': formatoActual,
+    'ruta_local': rutaLocal,
     'eliminado': eliminado,
     'creado_el': creadoEl != null
         ? Timestamp.fromDate(creadoEl!)
@@ -58,10 +62,11 @@ class ArchivoExpediente {
   ArchivoExpediente copyWith({
     String? id,
     String? expedienteId,
-    String? formatoEntrada,
-    String? formatoActual,
     String? urlArchivo,
     String? nombreArchivo,
+    String? formatoEntrada,
+    String? formatoActual,
+    String? rutaLocal,
     bool? eliminado,
     DateTime? creadoEl,
     DateTime? actualizadoEl,
@@ -69,10 +74,11 @@ class ArchivoExpediente {
     return ArchivoExpediente(
       id: id ?? this.id,
       expedienteId: expedienteId ?? this.expedienteId,
-      formatoEntrada: formatoEntrada ?? this.formatoEntrada,
-      formatoActual: formatoActual ?? this.formatoActual,
       urlArchivo: urlArchivo ?? this.urlArchivo,
       nombreArchivo: nombreArchivo ?? this.nombreArchivo,
+      formatoEntrada: formatoEntrada ?? this.formatoEntrada,
+      formatoActual: formatoActual ?? this.formatoActual,
+      rutaLocal: rutaLocal ?? this.rutaLocal,
       eliminado: eliminado ?? this.eliminado,
       creadoEl: creadoEl ?? this.creadoEl,
       actualizadoEl: actualizadoEl ?? this.actualizadoEl,

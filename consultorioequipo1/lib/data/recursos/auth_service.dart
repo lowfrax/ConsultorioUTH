@@ -18,6 +18,22 @@ class AuthResult {
 class AuthService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Variable global para mantener el procurador actual
+  static Map<String, dynamic>? _procuradorActual;
+
+  /// Obtiene el procurador actual
+  static Map<String, dynamic>? get procuradorActual => _procuradorActual;
+
+  /// Establece el procurador actual
+  static void setProcuradorActual(Map<String, dynamic> procurador) {
+    _procuradorActual = procurador;
+  }
+
+  /// Limpia el procurador actual (para logout)
+  static void limpiarProcuradorActual() {
+    _procuradorActual = null;
+  }
+
   /// Autentica un usuario verificando credenciales y rol de alumno
   static Future<AuthResult> login(String usuario, String password) async {
     try {
@@ -93,6 +109,9 @@ class AuthService {
         print('👤 Usuario: ${userData['nombre']}');
         print('🎭 Rol: ${roleData['rol']}');
         print('📧 Email: ${userData['email']}');
+
+        // Guardar el procurador actual
+        setProcuradorActual(userData);
 
         return AuthResult(
           success: true,

@@ -12,6 +12,7 @@ import '../data/recursos/caso_service.dart';
 import 'camara.dart';
 import 'package:camera/camera.dart';
 import 'img_preview.dart';
+import '../data/recursos/auth_service.dart';
 
 class CaseFormScreen extends StatefulWidget {
   const CaseFormScreen({super.key});
@@ -35,19 +36,24 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
   final TextEditingController _nombreCasoController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
   final TextEditingController _costoController = TextEditingController();
+  final TextEditingController _procuradorController = TextEditingController();
   DateTime? _fechaLimite;
 
   TipoCaso? _selectedTipoCaso;
-  Procurador? _selectedProcurador;
   Juzgado? _selectedJuzgado;
   Legitario? _selectedDemandante;
   Legitario? _selectedDemandado;
 
   // Datos cargados
   List<TipoCaso> _tiposCaso = [];
-  List<Procurador> _procuradores = [];
   List<Juzgado> _juzgados = [];
   List<Legitario> _legitarios = [];
+  List<Legitario> _demandantes = [];
+  List<Legitario> _demandados = [];
+
+  // Procurador actual (obtenido del login)
+  Map<String, dynamic>? _procuradorActual;
+  String? _procuradorId;
 
   bool _isLoading = false;
   String? _expedienteId;
@@ -62,16 +68,41 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Obtener el procurador actual del login
+      _procuradorActual = AuthService.procuradorActual;
+      _procuradorController.text =
+          _procuradorActual?['nombre'] ?? 'No disponible';
+      _procuradorId =
+          _procuradorActual?['id'] ?? _procuradorActual?['documentId'];
+
+      print('👤 Procurador actual:');
+      print('  - Nombre: ${_procuradorActual?['nombre']}');
+      print('  - ID: $_procuradorId');
+      print('  - Datos completos: $_procuradorActual');
+
       final tiposCaso = await CasoService.obtenerTiposCaso();
-      final procuradores = await CasoService.obtenerProcuradores();
       final juzgados = await CasoService.obtenerJuzgados();
       final legitarios = await CasoService.obtenerLegitarios();
 
+      // Obtener legitarios por rol específico
+      final demandantes = await CasoService.obtenerLegitariosPorRol(
+        'demandante',
+      );
+      final demandados = await CasoService.obtenerLegitariosPorRol('demandado');
+
+      print('📊 Datos cargados:');
+      print('  - Tipos de caso: ${tiposCaso.length}');
+      print('  - Juzgados: ${juzgados.length}');
+      print('  - Legitarios total: ${legitarios.length}');
+      print('  - Demandantes: ${demandantes.length}');
+      print('  - Demandados: ${demandados.length}');
+
       setState(() {
         _tiposCaso = tiposCaso;
-        _procuradores = procuradores;
         _juzgados = juzgados;
         _legitarios = legitarios;
+        _demandantes = demandantes;
+        _demandados = demandados;
         _isLoading = false;
       });
     } catch (e) {
@@ -124,6 +155,7 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      print('📝 Creando expediente: ${_nombreExpedienteController.text}');
       final expediente = Expediente(
         nombreExpediente: _nombreExpedienteController.text,
       );
@@ -131,18 +163,63 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
       _expedienteId = await CasoService.crearExpediente(expediente);
 
       if (_expedienteId != null) {
-        // Subir archivos
-        for (final archivo in _archivosAdjuntos) {
-          await CasoService.subirArchivo(archivo, _expedienteId!);
+        print('✅ Expediente creado con ID: $_expedienteId');
+        print('📤 Archivos a guardar localmente: ${_archivosAdjuntos.length}');
+
+        // Guardar archivos localmente
+        int archivosGuardados = 0;
+        for (int i = 0; i < _archivosAdjuntos.length; i++) {
+          final archivo = _archivosAdjuntos[i];
+          print(
+            '💾 Guardando archivo ${i + 1}/${_archivosAdjuntos.length}: ${archivo.path}',
+          );
+
+          final archivoId = await CasoService.guardarArchivoLocal(
+            archivo,
+            _expedienteId!,
+          );
+
+          if (archivoId != null) {
+            print('✅ Archivo guardado localmente con ID: $archivoId');
+            archivosGuardados++;
+          } else {
+            print('❌ Error al guardar archivo localmente: ${archivo.path}');
+          }
+        }
+
+        print(
+          '🎯 Total de archivos guardados localmente: $archivosGuardados/${_archivosAdjuntos.length}',
+        );
+
+        if (archivosGuardados > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Expediente creado y $archivosGuardados archivos guardados localmente',
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Expediente creado pero no se pudieron guardar archivos',
+              ),
+            ),
+          );
         }
 
         setState(() => _currentStep = 2);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al crear el expediente')),
+        );
       }
     } catch (e) {
-      print('Error al crear expediente: $e');
+      print('❌ Error al crear expediente: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error al crear expediente: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -152,11 +229,11 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedTipoCaso == null ||
-        _selectedProcurador == null ||
         _selectedJuzgado == null ||
         _selectedDemandante == null ||
         _selectedDemandado == null ||
-        _fechaLimite == null) {
+        _fechaLimite == null ||
+        _procuradorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor completa todos los campos requeridos'),
@@ -168,11 +245,18 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      print('📝 Creando caso...');
+      print('  - Procurador ID: $_procuradorId');
+      print('  - Tipo de caso: ${_selectedTipoCaso!.nombreCaso}');
+      print('  - Juzgado: ${_selectedJuzgado!.nombreJuzgado}');
+      print('  - Demandante: ${_selectedDemandante!.nombre}');
+      print('  - Demandado: ${_selectedDemandado!.nombre}');
+
       final caso = Caso(
         nombreCaso: _nombreCasoController.text,
         tipocasoId: _selectedTipoCaso!.id!,
         expedienteId: _expedienteId!,
-        procuradorId: _selectedProcurador!.id!,
+        procuradorId: _procuradorId!,
         descripcion: _descripcionController.text,
         demandanteId: _selectedDemandante!.id!,
         demandadoId: _selectedDemandado!.id!,
@@ -220,6 +304,83 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
       appBar: AppBar(
         title: const Text('Nuevo Caso'),
         backgroundColor: greenColor,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Diagnóstico de Datos'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Tipos de caso: ${_tiposCaso.length}'),
+                      Text('Juzgados: ${_juzgados.length}'),
+                      Text('Legitarios: ${_legitarios.length}'),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Detalles:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      if (_tiposCaso.isNotEmpty)
+                        Text(
+                          'Tipos: ${_tiposCaso.map((t) => t.nombreCaso).join(', ')}',
+                        ),
+                      if (_juzgados.isNotEmpty)
+                        Text(
+                          'Juzgados: ${_juzgados.map((j) => j.nombreJuzgado).join(', ')}',
+                        ),
+                      if (_legitarios.isNotEmpty)
+                        Text(
+                          'Legitarios: ${_legitarios.map((l) => l.nombre).join(', ')}',
+                        ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cerrar'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _cargarDatos();
+                      },
+                      child: const Text('Recargar'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        print('🔍 Verificando juzgados...');
+                        final juzgados = await CasoService.obtenerJuzgados();
+                        print('📊 Juzgados encontrados: ${juzgados.length}');
+                        for (final juzgado in juzgados) {
+                          print(
+                            '  - ${juzgado.nombreJuzgado} (${juzgado.direccion})',
+                          );
+                        }
+                        _cargarDatos();
+                      },
+                      child: const Text('Verificar Juzgados'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        print('🔍 Diagnóstico de datos...');
+                        _cargarDatos();
+                      },
+                      child: const Text('Diagnóstico Completo'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            tooltip: 'Diagnóstico',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -382,27 +543,15 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
                         const SizedBox(height: 10),
 
                         const Text('Procurador asignado:'),
-                        DropdownButtonFormField<Procurador>(
-                          value: _selectedProcurador,
-                          items: _procuradores
-                              .map(
-                                (proc) => DropdownMenuItem(
-                                  value: proc,
-                                  child: Text(proc.nombre),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) =>
-                              setState(() => _selectedProcurador = value),
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
+                        TextFormField(
+                          controller: _procuradorController,
+                          enabled: false,
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.grey[200],
+                            hintText: 'Procurador asignado',
                           ),
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Por favor selecciona un procurador';
-                            }
-                            return null;
-                          },
                         ),
                         const SizedBox(height: 10),
 
@@ -434,7 +583,7 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
                         const Text('Demandante:'),
                         DropdownButtonFormField<Legitario>(
                           value: _selectedDemandante,
-                          items: _legitarios
+                          items: _demandantes
                               .map(
                                 (leg) => DropdownMenuItem(
                                   value: leg,
@@ -459,7 +608,7 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
                         const Text('Demandado:'),
                         DropdownButtonFormField<Legitario>(
                           value: _selectedDemandado,
-                          items: _legitarios
+                          items: _demandados
                               .map(
                                 (leg) => DropdownMenuItem(
                                   value: leg,
@@ -551,6 +700,7 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
     _nombreCasoController.dispose();
     _descripcionController.dispose();
     _costoController.dispose();
+    _procuradorController.dispose();
     super.dispose();
   }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import '../data/recursos/caso_service.dart';
 import '../data/modelos/expediente.dart';
 import '../data/modelos/archivoexpediente.dart';
-import '../data/recursos/caso_service.dart';
 import 'pdfviewer.dart';
 
 class ExpedientesScreen extends StatefulWidget {
@@ -26,14 +27,25 @@ class _ExpedientesScreenState extends State<ExpedientesScreen> {
     setState(() => isLoading = true);
 
     try {
+      print('📁 Cargando expedientes...');
       final expedientesData = await CasoService.obtenerExpedientes();
+      print('✅ Expedientes cargados: ${expedientesData.length}');
 
       // Cargar archivos para cada expediente
       final archivosMap = <String, List<ArchivoExpediente>>{};
-      for (final expediente in expedientesData) {
+      for (int i = 0; i < expedientesData.length; i++) {
+        final expediente = expedientesData[i];
+        print(
+          '📂 Cargando archivos para expediente ${i + 1}/${expedientesData.length}: ${expediente.nombreExpediente} (ID: ${expediente.id})',
+        );
+
         final archivos = await CasoService.obtenerArchivosExpediente(
           expediente.id!,
         );
+        print(
+          '📄 Archivos encontrados para ${expediente.nombreExpediente}: ${archivos.length}',
+        );
+
         archivosMap[expediente.id!] = archivos;
       }
 
@@ -42,47 +54,83 @@ class _ExpedientesScreenState extends State<ExpedientesScreen> {
         archivosPorExpediente = archivosMap;
         isLoading = false;
       });
+
+      print('🎯 Total de expedientes cargados: ${expedientesData.length}');
+      print('📊 Total de expedientes con archivos: ${archivosMap.length}');
     } catch (e) {
-      print('Error al cargar expedientes: $e');
+      print('❌ Error al cargar expedientes: $e');
       setState(() => isLoading = false);
     }
   }
 
-  void _verArchivo(ArchivoExpediente archivo) {
-    // Aquí puedes implementar la lógica para ver el archivo
-    // Por ahora solo mostramos un diálogo
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Archivo'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Nombre: ${archivo.nombreArchivo}'),
-            Text('Formato: ${archivo.formatoActual}'),
-            Text('Tamaño: ${archivo.urlArchivo.length} bytes'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
+  Future<void> _verArchivo(ArchivoExpediente archivo) async {
+    try {
+      if (archivo.rutaLocal != null) {
+        // Verificar si el archivo local existe
+        final localFile = File(archivo.rutaLocal!);
+        if (await localFile.exists()) {
+          print('📁 Abriendo archivo local: ${archivo.rutaLocal}');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  PdfViewerScreen(pdfPathToOpen: archivo.rutaLocal!),
+            ),
+          );
+        } else {
+          print('❌ Archivo local no existe: ${archivo.rutaLocal}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('El archivo local no existe')),
+          );
+        }
+      } else if (archivo.urlArchivo != null) {
+        // Abrir archivo desde Firebase Storage
+        print('🌐 Abriendo archivo desde Firebase: ${archivo.urlArchivo}');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                PdfViewerScreen(pdfPathToOpen: archivo.urlArchivo!),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Aquí puedes abrir el archivo en el visor PDF
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => PdfViewerScreen()),
-              );
-            },
-            child: const Text('Ver'),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No hay archivo disponible')),
+        );
+      }
+    } catch (e) {
+      print('❌ Error al abrir archivo: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al abrir archivo: $e')));
+    }
+  }
+
+  Future<void> _subirArchivoAFirebase(ArchivoExpediente archivo) async {
+    try {
+      print('📤 Subiendo archivo a Firebase: ${archivo.nombreArchivo}');
+
+      final url = await CasoService.subirArchivoLocalAFirebase(archivo.id!);
+
+      if (url != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Archivo subido a Firebase exitosamente'),
           ),
-        ],
-      ),
-    );
+        );
+        // Recargar expedientes para mostrar la URL actualizada
+        _cargarExpedientes();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al subir archivo a Firebase')),
+        );
+      }
+    } catch (e) {
+      print('❌ Error al subir archivo: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   @override
@@ -149,45 +197,68 @@ class _ExpedientesScreenState extends State<ExpedientesScreen> {
                       '${archivos.length} archivo${archivos.length != 1 ? 's' : ''}',
                       style: TextStyle(color: Colors.grey[600]),
                     ),
-                    children: [
-                      if (archivos.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text(
-                            'No hay archivos en este expediente',
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey,
+                    children: archivos.isEmpty
+                        ? [
+                            const ListTile(
+                              leading: Icon(Icons.info_outline),
+                              title: Text('No hay archivos'),
+                              subtitle: Text(
+                                'Este expediente no tiene archivos adjuntos',
+                              ),
                             ),
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: archivos.length,
-                          itemBuilder: (context, archivoIndex) {
-                            final archivo = archivos[archivoIndex];
+                          ]
+                        : archivos.map<Widget>((archivo) {
+                            final tieneUrlFirebase = archivo.urlArchivo != null;
+                            final tieneRutaLocal = archivo.rutaLocal != null;
+
                             return ListTile(
                               leading: Icon(
-                                archivo.formatoActual.toLowerCase() == 'pdf'
-                                    ? Icons.picture_as_pdf
-                                    : Icons.image,
-                                color: greenColor,
+                                Icons.insert_drive_file,
+                                color: tieneUrlFirebase
+                                    ? Colors.green
+                                    : Colors.orange,
                               ),
                               title: Text(archivo.nombreArchivo),
-                              subtitle: Text(
-                                'Formato: ${archivo.formatoActual}',
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Formato: ${archivo.formatoActual}'),
+                                  if (tieneUrlFirebase)
+                                    const Text(
+                                      '✅ Subido a Firebase',
+                                      style: TextStyle(color: Colors.green),
+                                    )
+                                  else if (tieneRutaLocal)
+                                    const Text(
+                                      '💾 Guardado localmente',
+                                      style: TextStyle(color: Colors.orange),
+                                    )
+                                  else
+                                    const Text(
+                                      '❌ No disponible',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                ],
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.visibility),
-                                onPressed: () => _verArchivo(archivo),
-                                tooltip: 'Ver archivo',
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.visibility),
+                                    onPressed: () => _verArchivo(archivo),
+                                    tooltip: 'Ver archivo',
+                                  ),
+                                  if (tieneRutaLocal && !tieneUrlFirebase)
+                                    IconButton(
+                                      icon: const Icon(Icons.cloud_upload),
+                                      onPressed: () =>
+                                          _subirArchivoAFirebase(archivo),
+                                      tooltip: 'Subir a Firebase',
+                                    ),
+                                ],
                               ),
                             );
-                          },
-                        ),
-                    ],
+                          }).toList(),
                   ),
                 );
               },
