@@ -1,198 +1,167 @@
 # UTH Consultorio Jurídico
 
-Aplicación Flutter para la gestión de casos jurídicos del consultorio UTH.
+Sistema de gestión de casos jurídicos desarrollado en Flutter con Firebase.
 
-## 🚀 Características Principales
+## Funcionalidades Implementadas
 
-### ✅ Sistema de Autenticación
-- **Pantalla de Login** con diseño moderno y gradiente
-- **Credenciales de prueba**: Usuario: `1`, Contraseña: `1`
-- **Validación de formularios** con mensajes de error
-- **Indicador de carga** durante el proceso de login
-- **Navegación segura** entre pantallas
+### 🔐 Sistema de Autenticación
+- Login funcional con Firebase Auth
+- Verificación de usuarios existentes
+- Manejo de sesiones
 
-### ✅ Dashboard Mejorado
-- **Estadísticas visuales** de casos por estado
-- **Búsqueda en tiempo real** de casos
-- **Gestión de estados** con tap largo
-- **Navegación entre secciones** (Dashboard y Expedientes)
-- **Botón de logout** con confirmación
+### 📋 Gestión de Casos - Formulario de 3 Pasos
+1. **Adjuntar archivos**: Selección de PDFs e imágenes desde almacenamiento o cámara
+2. **Crear expediente**: Asignar nombre al expediente y subir archivos a Firebase Storage
+3. **Información del caso**: Completar datos del caso con dropdowns conectados a Firebase
 
-### ✅ Verificación de Conexión Firebase
-- **Verificación rápida** con diálogos emergentes
-- **Prueba exhaustiva** con análisis detallado
-- **Detección de problemas** de conectividad
-- **Timeouts configurables** para detección rápida
-- **Mensajes específicos** por tipo de error
+### 📁 Gestión de Expedientes
+- Visualización de expedientes como carpetas
+- Lista de archivos por expediente
+- Vista previa de archivos (PDFs e imágenes)
 
-### ✅ Navegación Mejorada
-- **Barra de navegación** entre Dashboard y Expedientes
-- **Indicador visual** de la sección activa
-- **Transiciones suaves** entre pantallas
-- **Diseño consistente** en toda la aplicación
+### 📊 Dashboard Mejorado
+- **Estadísticas en tiempo real** desde Firebase
+- **Lista de casos** con búsqueda por nombre, tipo o procurador
+- **Cambio de estado** con persistencia en Firebase
+- **Contadores reales** en lugar de datos de prueba
+- **Botón para crear datos de prueba** en la base de datos
 
-## 📱 Pantallas Disponibles
+### 🔧 Estructura de Base de Datos Completa
+- **8 colecciones Firebase** implementadas
+- **Modelos actualizados** para compatibilidad con Firebase
+- **Relaciones entre entidades** funcionando
+- **Servicios centralizados** para todas las operaciones
 
-### 1. Login Screen (`login_screen.dart`)
-- **Diseño moderno** con gradiente verde
-- **Validación de campos** obligatorios
-- **Credenciales de prueba** visibles
-- **Indicador de carga** durante login
-- **Mensajes de error** para credenciales incorrectas
+### 🚀 Características Técnicas Avanzadas
+- **Subida de archivos** a Firebase Storage
+- **Relaciones entre entidades** en Firestore
+- **Estadísticas en tiempo real**
+- **Búsqueda y filtrado**
+- **Cambio de estados** con persistencia
+- **Validación de formularios** completa
 
-### 2. Dashboard Screen (`dashboard_screen.dart`)
-- **Estadísticas de casos** por estado
-- **Búsqueda de casos** en tiempo real
-- **Gestión de estados** con tap largo
-- **Botones de verificación** Firebase
-- **Navegación a Expedientes**
+## 📱 Interfaz de Usuario Moderna
+- **Stepper** para formulario de casos
+- **ExpansionTile** para expedientes
+- **Cards** para casos con estados visuales
+- **Dropdowns** conectados a Firebase
+- **Búsqueda** en tiempo real
+- **Indicadores de carga**
 
-### 3. Expedientes Screen (`expedientes_screen.dart`)
-- **Pantalla placeholder** para futuras funcionalidades
-- **Diseño consistente** con el resto de la app
-- **Información de desarrollo** visible
+## 🔄 Flujo de Trabajo Completo
+1. **Login** → Autenticación con Firebase
+2. **Dashboard** → Vista de estadísticas y casos
+3. **Nuevo Caso** → Formulario de 3 pasos
+4. **Gestión** → Cambio de estados y búsqueda
+5. **Expedientes** → Visualización de archivos
 
-## 🔧 Funcionalidades Técnicas
+## 🛠️ Configuración Lista
+- Todas las dependencias actualizadas
+- Firebase configurado correctamente
+- Modelos compatibles con Firestore
+- Servicios centralizados implementados
 
-### Sistema de Autenticación
-```dart
-// Credenciales de prueba
-Usuario: 1
-Contraseña: 1
-```
+## 📋 Estructura de Base de Datos
 
-### Verificación Firebase
-- **Verificación rápida**: Botón de nube en AppBar
-- **Prueba exhaustiva**: Botón de analytics en AppBar
-- **Diálogos emergentes**: Resultados detallados
-- **Manejo de errores**: Try-catch mejorado
+### Colecciones Firebase:
+- **Casos**: Información completa de casos jurídicos
+- **Expedientes**: Expedientes asociados a casos
+- **ArchivoExpediente**: Archivos subidos al Storage
+- **TipoCaso**: Tipos de casos (Civil, Penal, Laboral, etc.)
+- **Juzgados**: Información de juzgados
+- **Legitarios**: Demandantes y demandados
+- **Rol_Legitario**: Roles de legitarios
+- **Procuradores**: Procuradores del sistema
 
-### Navegación
-- **Dashboard**: Pantalla principal con estadísticas
-- **Expedientes**: Sección en desarrollo
-- **Logout**: Botón con confirmación
+### Modelos de Datos:
+- `Caso`: Caso jurídico con relaciones a expediente, procurador, juzgado, etc.
+- `Expediente`: Expediente con archivos asociados
+- `ArchivoExpediente`: Archivo subido al Storage con metadatos
+- `TipoCaso`: Tipos de casos disponibles
+- `Juzgado`: Información de juzgados
+- `Legitario`: Demandantes y demandados
+- `RolLegitario`: Roles de legitarios
+- `Procurador`: Procuradores del sistema
 
-## 🎨 Diseño y UX
+## 🚀 Características Técnicas
 
-### Colores Principales
-- **Verde**: Color principal (#4CAF50)
-- **Blanco**: Fondo principal
-- **Gris**: Elementos secundarios
+### Servicios Firebase:
+- **CasoService**: Manejo completo de casos, expedientes y archivos
+- **FirebaseService**: Verificación de conexiones y pruebas
+- **AuthService**: Autenticación de usuarios
 
-### Componentes
-- **Cards**: Para estadísticas y casos
-- **Diálogos**: Para confirmaciones y resultados
-- **SnackBars**: Para mensajes temporales
-- **Gradientes**: En pantalla de login
+### Funcionalidades Avanzadas:
+- **Subida de archivos** a Firebase Storage
+- **Relaciones entre entidades** en Firestore
+- **Estadísticas en tiempo real**
+- **Búsqueda y filtrado**
+- **Cambio de estados** con persistencia
+- **Validación de formularios**
 
-## 📊 Estructura de Archivos
+### 📱 Interfaz de Usuario
 
-```
-lib/
-├── main.dart                          # Punto de entrada con login
-├── screens/
-│   ├── login_screen.dart              # Pantalla de autenticación
-│   ├── dashboard_screen.dart          # Dashboard principal
-│   ├── expedientes_screen.dart        # Pantalla de expedientes
-│   └── case_form_screen.dart          # Formulario de casos
-├── models/
-│   └── caso.dart                      # Modelo de datos
-└── data/
-    └── recursos/
-        └── firebase_service.dart      # Servicios de Firebase
-```
+#### Pantallas Principales:
+1. **LoginScreen**: Autenticación de usuarios
+2. **DashboardScreen**: Vista principal con estadísticas y lista de casos
+3. **CaseFormScreen**: Formulario de 3 pasos para crear casos
+4. **ExpedientesScreen**: Gestión de expedientes y archivos
+5. **TestFirebaseScreen**: Pruebas de conexión y datos de prueba
 
-## 🚀 Cómo Usar
+#### Características UI:
+- **Stepper** para formulario de casos
+- **ExpansionTile** para expedientes
+- **Cards** para casos con estados visuales
+- **Dropdowns** conectados a Firebase
+- **Búsqueda** en tiempo real
+- **Indicadores de carga**
 
-### 1. Iniciar la Aplicación
-```bash
-flutter run
-```
+### 🔄 Flujo de Trabajo
 
-### 2. Login
-- Usar credenciales: `1` / `1`
-- Los campos son obligatorios
-- El botón se deshabilita durante el login
+1. **Login** → Autenticación con Firebase
+2. **Dashboard** → Vista de estadísticas y casos
+3. **Nuevo Caso** → Formulario de 3 pasos:
+   - Adjuntar archivos
+   - Crear expediente
+   - Completar información del caso
+4. **Gestión** → Cambio de estados y búsqueda
+5. **Expedientes** → Visualización de archivos
 
-### 3. Dashboard
-- **Ver estadísticas** de casos por estado
-- **Buscar casos** usando el campo de búsqueda
-- **Cambiar estado** de casos con tap largo
-- **Verificar conexión** Firebase con los botones del AppBar
-- **Navegar a Expedientes** usando la barra de navegación
+### 🛠️ Configuración
 
-### 4. Verificación Firebase
-- **Verificación Rápida**: Resultado inmediato
-- **Prueba Exhaustiva**: Análisis detallado con porcentajes
-- **Ver Detalles**: Diálogo con información completa
-
-## 🔧 Configuración
-
-### Dependencias Requeridas
+#### Dependencias:
 ```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  firebase_core: ^3.15.2
-  firebase_auth: ^5.7.0
-  cloud_firestore: ^5.6.12
-  sqflite: ^2.3.0
-  path: ^1.8.3
+firebase_core: ^2.24.2
+cloud_firestore: ^4.13.6
+firebase_auth: ^4.15.3
+firebase_storage: ^11.5.6
+file_picker: ^6.1.1
+image_picker: ^1.0.4
+camera: ^0.10.5+5
 ```
 
-### Configuración Firebase
-1. **firebase_options.dart**: Configurado correctamente
-2. **Reglas de Firestore**: Permitir lectura en colección 'test'
-3. **Conexión a Internet**: Requerida para verificaciones
+#### Configuración Firebase:
+- Firebase Core inicializado
+- Firestore configurado
+- Storage configurado
+- Auth configurado
 
-## 🎯 Características Destacadas
+### 📝 Notas de Desarrollo
 
-### ✅ UX Mejorada
-- **Diálogos emergentes** en lugar de SnackBars para información importante
-- **Indicadores de carga** durante operaciones
-- **Confirmaciones** para acciones críticas
-- **Navegación intuitiva** entre secciones
+- **Modelos actualizados** para compatibilidad con Firebase
+- **Servicios centralizados** para operaciones de base de datos
+- **Manejo de errores** robusto
+- **Validación de formularios** completa
+- **Interfaz responsiva** y moderna
 
-### ✅ Detección Robusta
-- **Verificación de internet** antes de probar Firebase
-- **Timeouts configurables** para detección rápida
-- **Mensajes específicos** por tipo de error
-- **Análisis detallado** con porcentajes de éxito
+### 🎯 Próximas Mejoras
 
-### ✅ Diseño Consistente
-- **Colores uniformes** en toda la aplicación
-- **Componentes reutilizables** para estadísticas
-- **Tipografía consistente** en todas las pantallas
-- **Espaciado uniforme** entre elementos
+- [ ] Visualización de PDFs en la app
+- [ ] Notificaciones push
+- [ ] Reportes y estadísticas avanzadas
+- [ ] Exportación de datos
+- [ ] Backup automático
+- [ ] Roles y permisos avanzados
 
-## 🔄 Flujo de Usuario
+---
 
-1. **Inicio** → Pantalla de login con gradiente
-2. **Login** → Validación de credenciales (1/1)
-3. **Dashboard** → Estadísticas y gestión de casos
-4. **Navegación** → Cambio entre Dashboard y Expedientes
-5. **Verificación** → Botones para probar conexión Firebase
-6. **Logout** → Confirmación y regreso al login
-
-## 📝 Notas de Desarrollo
-
-### Próximas Funcionalidades
-- **Sistema de expedientes** completo
-- **Autenticación real** con Firebase Auth
-- **Sincronización** de datos con Firestore
-- **Notificaciones** push para casos urgentes
-
-### Mejoras Técnicas
-- **Estado global** con Provider o Riverpod
-- **Caché local** para datos offline
-- **Validaciones** más robustas
-- **Tests unitarios** y de integración
-
-## 🎉 Resultado Final
-
-La aplicación ahora incluye:
-- ✅ **Sistema de login** funcional con credenciales de prueba
-- ✅ **Dashboard mejorado** con navegación y estadísticas
-- ✅ **Verificación Firebase** con diálogos emergentes
-- ✅ **Navegación entre pantallas** con diseño consistente
-- ✅ **UX mejorada** con confirmaciones y indicadores de carga
+**Desarrollado para UTH Consultorio Jurídico**

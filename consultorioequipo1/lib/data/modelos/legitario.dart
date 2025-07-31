@@ -1,17 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Juzgado {
+class Legitario {
   final String? id;
-  final String nombreJuzgado;
+  final String rolId;
+  final String nombre;
+  final String email;
   final String direccion;
   final String telefono;
   final bool eliminado;
   final DateTime? creadoEl;
   final DateTime? actualizadoEl;
 
-  Juzgado({
+  Legitario({
     this.id,
-    required this.nombreJuzgado,
+    required this.rolId,
+    required this.nombre,
+    required this.email,
     required this.direccion,
     required this.telefono,
     this.eliminado = false,
@@ -19,10 +23,12 @@ class Juzgado {
     this.actualizadoEl,
   });
 
-  factory Juzgado.fromMap(Map<String, dynamic> map, String documentId) =>
-      Juzgado(
+  factory Legitario.fromMap(Map<String, dynamic> map, String documentId) =>
+      Legitario(
         id: documentId,
-        nombreJuzgado: map['nombre_juzgado'] ?? '',
+        rolId: map['rol_id'] ?? '',
+        nombre: map['nombre'] ?? '',
+        email: map['email'] ?? '',
         direccion: map['direccion'] ?? '',
         telefono: map['telefono'] ?? '',
         eliminado: map['eliminado'] ?? false,
@@ -35,7 +41,9 @@ class Juzgado {
       );
 
   Map<String, dynamic> toMap() => {
-    'nombre_juzgado': nombreJuzgado,
+    'rol_id': rolId,
+    'nombre': nombre,
+    'email': email,
     'direccion': direccion,
     'telefono': telefono,
     'eliminado': eliminado,
@@ -45,18 +53,22 @@ class Juzgado {
     'actualizado_el': FieldValue.serverTimestamp(),
   };
 
-  Juzgado copyWith({
+  Legitario copyWith({
     String? id,
-    String? nombreJuzgado,
+    String? rolId,
+    String? nombre,
+    String? email,
     String? direccion,
     String? telefono,
     bool? eliminado,
     DateTime? creadoEl,
     DateTime? actualizadoEl,
   }) {
-    return Juzgado(
+    return Legitario(
       id: id ?? this.id,
-      nombreJuzgado: nombreJuzgado ?? this.nombreJuzgado,
+      rolId: rolId ?? this.rolId,
+      nombre: nombre ?? this.nombre,
+      email: email ?? this.email,
       direccion: direccion ?? this.direccion,
       telefono: telefono ?? this.telefono,
       eliminado: eliminado ?? this.eliminado,

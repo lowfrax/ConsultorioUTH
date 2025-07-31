@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'case_form_screen.dart';
 import 'expedientes_screen.dart';
-import '../models/caso.dart';
+import '../data/modelos/caso.dart';
+import '../data/modelos/tipocaso.dart';
+import '../data/modelos/juzgado.dart';
+import '../data/modelos/legitario.dart';
+import '../data/modelos/procurador.dart';
+import '../data/recursos/caso_service.dart';
 import '../data/recursos/firebase_service.dart';
 import 'pdfviewer.dart';
 import 'img_preview.dart';
@@ -17,11 +22,45 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final List<Caso> casos = [];
+  List<Caso> casos = [];
+  List<TipoCaso> tiposCaso = [];
+  List<Juzgado> juzgados = [];
+  List<Legitario> legitarios = [];
+  List<Procurador> procuradores = [];
   String searchQuery = '';
+  bool isLoading = true;
+  Map<String, int> estadisticas = {};
 
-  void _addCaso(Caso caso) {
-    setState(() => casos.add(caso));
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    setState(() => isLoading = true);
+
+    try {
+      final casosData = await CasoService.obtenerCasos();
+      final tiposCasoData = await CasoService.obtenerTiposCaso();
+      final juzgadosData = await CasoService.obtenerJuzgados();
+      final legitariosData = await CasoService.obtenerLegitarios();
+      final procuradoresData = await CasoService.obtenerProcuradores();
+      final estadisticasData = await CasoService.obtenerEstadisticas();
+
+      setState(() {
+        casos = casosData;
+        tiposCaso = tiposCasoData;
+        juzgados = juzgadosData;
+        legitarios = legitariosData;
+        procuradores = procuradoresData;
+        estadisticas = estadisticasData;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error al cargar datos: $e');
+      setState(() => isLoading = false);
+    }
   }
 
   void _cambiarEstado(Caso caso) async {
@@ -33,37 +72,128 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ListTile(
             leading: const Icon(Icons.timelapse),
             title: const Text('En proceso'),
-            onTap: () => Navigator.pop(context, 'En proceso'),
+            onTap: () => Navigator.pop(context, 'en proceso'),
           ),
           ListTile(
             leading: const Icon(Icons.check_circle),
             title: const Text('Finalizado'),
-            onTap: () => Navigator.pop(context, 'Finalizado'),
+            onTap: () => Navigator.pop(context, 'finalizado'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.warning),
+            title: const Text('Retrasado'),
+            onTap: () => Navigator.pop(context, 'retrasado'),
           ),
         ],
       ),
     );
+
     if (nuevoEstado != null) {
-      setState(() => caso.estado = nuevoEstado);
+      final success = await CasoService.cambiarEstadoCaso(
+        caso.id!,
+        nuevoEstado,
+      );
+      if (success) {
+        await _cargarDatos(); // Recargar datos
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Estado cambiado a: $nuevoEstado')),
+          );
+        }
+      }
     }
   }
 
-  int _contarPorEstado(String estado) {
-    final ahora = DateTime.now();
-    return casos.where((c) {
-      if (estado == 'Retrasado') {
-        final fechaLimite = DateTime.tryParse(_formatearFecha(c.fecha));
-        return c.estado != 'Finalizado' &&
-            fechaLimite != null &&
-            fechaLimite.isBefore(ahora);
-      }
-      return c.estado == estado;
-    }).length;
+  String _obtenerNombreTipoCaso(String tipoCasoId) {
+    final tipo = tiposCaso.firstWhere(
+      (t) => t.id == tipoCasoId,
+      orElse: () => TipoCaso(nombreCaso: 'Desconocido', descripcion: ''),
+    );
+    return tipo.nombreCaso;
   }
 
-  String _formatearFecha(String fecha) {
-    final partes = fecha.split('/');
-    return '${partes[2]}-${partes[1]}-${partes[0]}';
+  String _obtenerNombreProcurador(String procuradorId) {
+    final procurador = procuradores.firstWhere(
+      (p) => p.id == procuradorId,
+      orElse: () => Procurador(
+        nombre: 'Desconocido',
+        usuario: '',
+        password: '',
+        email: '',
+        telefono: '',
+        nCuenta: '',
+        creadoEl: DateTime.now(),
+        actualizadoEl: DateTime.now(),
+      ),
+    );
+    return procurador.nombre;
+  }
+
+  String _obtenerNombreJuzgado(String juzgadoId) {
+    final juzgado = juzgados.firstWhere(
+      (j) => j.id == juzgadoId,
+      orElse: () =>
+          Juzgado(nombreJuzgado: 'Desconocido', direccion: '', telefono: ''),
+    );
+    return juzgado.nombreJuzgado;
+  }
+
+  String _obtenerNombreLegitario(String legitarioId) {
+    final legitario = legitarios.firstWhere(
+      (l) => l.id == legitarioId,
+      orElse: () => Legitario(
+        rolId: '',
+        nombre: 'Desconocido',
+        email: '',
+        direccion: '',
+        telefono: '',
+      ),
+    );
+    return legitario.nombre;
+  }
+
+  List<Caso> get filteredCasos {
+    if (searchQuery.isEmpty) return casos;
+    return casos
+        .where(
+          (caso) =>
+              caso.nombreCaso.toLowerCase().contains(
+                searchQuery.toLowerCase(),
+              ) ||
+              _obtenerNombreTipoCaso(
+                caso.tipocasoId,
+              ).toLowerCase().contains(searchQuery.toLowerCase()) ||
+              _obtenerNombreProcurador(
+                caso.procuradorId,
+              ).toLowerCase().contains(searchQuery.toLowerCase()),
+        )
+        .toList();
+  }
+
+  Future<void> _crearDatosPrueba() async {
+    setState(() => isLoading = true);
+
+    try {
+      await CasoService.crearDatosPrueba();
+      await _cargarDatos(); // Recargar datos después de crear los de prueba
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Datos de prueba creados exitosamente'),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al crear datos de prueba: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error al crear datos de prueba: $e')),
+        );
+      }
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
   /// Muestra un diálogo con los detalles de la conexión
@@ -100,26 +230,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.analytics, color: Colors.blue),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Resumen: ${resultados.values.where((v) => v == true).length}/${resultados.length} exitosas',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
@@ -173,35 +283,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredCasos = casos
-        .where(
-          (c) => c.nombre.toLowerCase().contains(searchQuery.toLowerCase()),
-        )
-        .toList();
+    final Color greenColor = Colors.green[800]!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('UTH Consultorio Jurídico'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        title: const Text('Dashboard'),
+        backgroundColor: greenColor,
         actions: [
+          // Botón para crear datos de prueba
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => PdfViewerScreen()),
-              );
-            },
-            tooltip: 'Ver PDFs',
+            icon: const Icon(Icons.add_circle),
+            onPressed: _crearDatosPrueba,
+            tooltip: 'Crear datos de prueba',
           ),
+          // Botón para escanear documentos
           IconButton(
-            icon: const Icon(
-              Icons.camera_alt,
-              size: 32,
-            ), // Icono de cámara más grande
-            tooltip:
-                'Escanear Documento', // Texto que aparece al mantener presionado
+            icon: const Icon(Icons.camera_alt, size: 32),
+            tooltip: 'Escanear Documento',
             onPressed: () async {
               final cameras = await availableCameras();
               final result = await Navigator.push(
@@ -230,7 +328,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final resultados =
                     await FirebaseService.verificarTodasLasConexiones();
 
-                // Mostrar diálogo con resultados
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
@@ -320,7 +417,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.analytics),
             onPressed: () async {
               try {
-                // Mostrar indicador de carga
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -338,10 +434,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final resultados =
                     await FirebaseService.probarConexionExhaustiva();
 
-                // Cerrar diálogo de carga
                 Navigator.of(context).pop();
 
-                // Mostrar resultados detallados
                 final exitosas = resultados.values
                     .where((v) => v == true)
                     .length;
@@ -408,22 +502,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onPressed: () => Navigator.of(context).pop(),
                         child: const Text('Cerrar'),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _mostrarDetallesConexion(resultados);
-                        },
-                        child: const Text('Ver Detalles'),
-                      ),
                     ],
                   ),
                 );
               } catch (e) {
-                // Cerrar diálogo de carga si está abierto
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop();
-                }
-
+                Navigator.of(context).pop(); // Cerrar diálogo de carga
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
@@ -447,208 +530,189 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
             tooltip: 'Prueba exhaustiva Firebase',
           ),
-          // Botón de logout
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _mostrarConfirmacionLogout,
-            tooltip: 'Cerrar sesión',
-          ),
         ],
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 20),
-          // Barra de navegación
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.dashboard, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text(
-                          'Dashboard',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ExpedientesScreen(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          Icon(Icons.folder_open, color: Colors.grey),
-                          SizedBox(width: 8),
-                          Text(
-                            'Expedientes',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: [
-              _DashboardCard(
-                count: casos.length,
-                label: 'Casos totales',
-                color: Colors.green,
-              ),
-              _DashboardCard(
-                count: _contarPorEstado('Pendiente'),
-                label: 'Pendientes',
-                color: Colors.orange,
-              ),
-              _DashboardCard(
-                count: _contarPorEstado('En proceso'),
-                label: 'En proceso',
-                color: Colors.blue,
-              ),
-              _DashboardCard(
-                count: _contarPorEstado('Finalizado'),
-                label: 'Finalizados',
-                color: Colors.green,
-              ),
-              _DashboardCard(
-                count: _contarPorEstado('Retrasado'),
-                label: 'Retrasados',
-                color: Colors.red,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              final newCaso = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CaseFormScreen()),
-              );
-              if (newCaso != null && newCaso is Caso) {
-                _addCaso(newCaso);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('Nuevo Caso'),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-            child: TextField(
-              decoration: const InputDecoration(
-                labelText: 'Buscar caso...',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (value) => setState(() => searchQuery = value),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredCasos.length,
-              itemBuilder: (context, index) {
-                final caso = filteredCasos[index];
-                final fechaLimite = DateTime.tryParse(
-                  _formatearFecha(caso.fecha),
-                );
-                final estaRetrasado =
-                    fechaLimite != null &&
-                    fechaLimite.isBefore(DateTime.now()) &&
-                    caso.estado != 'Finalizado';
-                final estadoDisplay = estaRetrasado ? 'Retrasado' : caso.estado;
-                final estadoColor = {
-                  'Pendiente': Colors.orange,
-                  'En proceso': Colors.blue,
-                  'Finalizado': Colors.green,
-                  'Retrasado': Colors.red,
-                }[estadoDisplay]!;
-
-                return GestureDetector(
-                  onLongPress: () => _cambiarEstado(caso),
-                  child: Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    child: ListTile(
-                      title: Text(caso.nombre),
-                      subtitle: Text('${caso.tipo} • ${caso.fecha}'),
-                      trailing: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(caso.procurador),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: estadoColor.withOpacity(0.1),
-                              border: Border.all(color: estadoColor),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              estadoDisplay,
-                              style: TextStyle(
-                                color: estadoColor,
-                                fontWeight: FontWeight.bold,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ExpedientesScreen(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.folder_open, color: Colors.grey),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Expedientes',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _DashboardCard(
+                      count: estadisticas['total'] ?? 0,
+                      label: 'Casos totales',
+                      color: Colors.green,
+                    ),
+                    _DashboardCard(
+                      count: estadisticas['pendientes'] ?? 0,
+                      label: 'Pendientes',
+                      color: Colors.orange,
+                    ),
+                    _DashboardCard(
+                      count: estadisticas['en_proceso'] ?? 0,
+                      label: 'En proceso',
+                      color: Colors.blue,
+                    ),
+                    _DashboardCard(
+                      count: estadisticas['finalizados'] ?? 0,
+                      label: 'Finalizados',
+                      color: Colors.green,
+                    ),
+                    _DashboardCard(
+                      count: estadisticas['retrasados'] ?? 0,
+                      label: 'Retrasados',
+                      color: Colors.red,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CaseFormScreen(),
+                      ),
+                    );
+                    if (result == true) {
+                      await _cargarDatos(); // Recargar datos
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
                     ),
                   ),
-                );
-              },
+                  child: const Text('Nuevo Caso'),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 10,
+                  ),
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Buscar caso...',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) => setState(() => searchQuery = value),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredCasos.length,
+                    itemBuilder: (context, index) {
+                      final caso = filteredCasos[index];
+                      final estaRetrasado =
+                          caso.plazo.isBefore(DateTime.now()) &&
+                          caso.estado != 'finalizado';
+                      final estadoDisplay = estaRetrasado
+                          ? 'retrasado'
+                          : caso.estado;
+                      final estadoColor = {
+                        'pendiente': Colors.orange,
+                        'en proceso': Colors.blue,
+                        'finalizado': Colors.green,
+                        'retrasado': Colors.red,
+                      }[estadoDisplay]!;
+
+                      return GestureDetector(
+                        onLongPress: () => _cambiarEstado(caso),
+                        child: Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          child: ListTile(
+                            title: Text(caso.nombreCaso),
+                            subtitle: Text(
+                              '${_obtenerNombreTipoCaso(caso.tipocasoId)} • ${caso.plazo.day}/${caso.plazo.month}/${caso.plazo.year}',
+                            ),
+                            trailing: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  _obtenerNombreProcurador(caso.procuradorId),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: estadoColor.withOpacity(0.1),
+                                    border: Border.all(color: estadoColor),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    estadoDisplay.toUpperCase(),
+                                    style: TextStyle(
+                                      color: estadoColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }

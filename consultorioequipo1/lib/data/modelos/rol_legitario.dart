@@ -1,30 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Juzgado {
+class RolLegitario {
   final String? id;
-  final String nombreJuzgado;
-  final String direccion;
-  final String telefono;
+  final String rol;
   final bool eliminado;
   final DateTime? creadoEl;
   final DateTime? actualizadoEl;
 
-  Juzgado({
+  RolLegitario({
     this.id,
-    required this.nombreJuzgado,
-    required this.direccion,
-    required this.telefono,
+    required this.rol,
     this.eliminado = false,
     this.creadoEl,
     this.actualizadoEl,
   });
 
-  factory Juzgado.fromMap(Map<String, dynamic> map, String documentId) =>
-      Juzgado(
+  factory RolLegitario.fromMap(Map<String, dynamic> map, String documentId) =>
+      RolLegitario(
         id: documentId,
-        nombreJuzgado: map['nombre_juzgado'] ?? '',
-        direccion: map['direccion'] ?? '',
-        telefono: map['telefono'] ?? '',
+        rol: map['rol'] ?? '',
         eliminado: map['eliminado'] ?? false,
         creadoEl: map['creado_el'] != null
             ? (map['creado_el'] as Timestamp).toDate()
@@ -35,9 +29,7 @@ class Juzgado {
       );
 
   Map<String, dynamic> toMap() => {
-    'nombre_juzgado': nombreJuzgado,
-    'direccion': direccion,
-    'telefono': telefono,
+    'rol': rol,
     'eliminado': eliminado,
     'creado_el': creadoEl != null
         ? Timestamp.fromDate(creadoEl!)
@@ -45,20 +37,16 @@ class Juzgado {
     'actualizado_el': FieldValue.serverTimestamp(),
   };
 
-  Juzgado copyWith({
+  RolLegitario copyWith({
     String? id,
-    String? nombreJuzgado,
-    String? direccion,
-    String? telefono,
+    String? rol,
     bool? eliminado,
     DateTime? creadoEl,
     DateTime? actualizadoEl,
   }) {
-    return Juzgado(
+    return RolLegitario(
       id: id ?? this.id,
-      nombreJuzgado: nombreJuzgado ?? this.nombreJuzgado,
-      direccion: direccion ?? this.direccion,
-      telefono: telefono ?? this.telefono,
+      rol: rol ?? this.rol,
       eliminado: eliminado ?? this.eliminado,
       creadoEl: creadoEl ?? this.creadoEl,
       actualizadoEl: actualizadoEl ?? this.actualizadoEl,
