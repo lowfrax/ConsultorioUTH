@@ -71,5 +71,11 @@ en la rama que se quiere actualizar y especificar de la que se tomaran los datos
 git push origin 5ed2fca99a58abe72b0db7ad39644b518e136ad9:refs/heads/test-2
 
 
+************ si existen cambios locales que no se quieren converar y se quiere hacer un pull
+
+git restore .       # Borra tus cambios locales no confirmados
+git pull            # Ahora sí puedes hacer pull sin errores
+
+
 
 
