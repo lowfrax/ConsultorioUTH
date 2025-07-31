@@ -32,8 +32,12 @@ class CasoService {
       final snapshot = await _firestore
           .collection(_casosCollection)
           .where('eliminado', isEqualTo: false)
-          .orderBy('creado_el', descending: true)
           .get();
+
+      print('📊 Casos encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        print('  - Caso: ${doc.data()['nombre_caso']} (ID: ${doc.id})');
+      }
 
       return snapshot.docs
           .map((doc) => Caso.fromMap(doc.data(), doc.id))
@@ -110,8 +114,14 @@ class CasoService {
       final snapshot = await _firestore
           .collection(_expedientesCollection)
           .where('eliminado', isEqualTo: false)
-          .orderBy('creado_el', descending: true)
           .get();
+
+      print('📁 Expedientes encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        print(
+          '  - Expediente: ${doc.data()['nombre_expediente']} (ID: ${doc.id})',
+        );
+      }
 
       return snapshot.docs
           .map((doc) => Expediente.fromMap(doc.data(), doc.id))
@@ -178,7 +188,6 @@ class CasoService {
           .collection(_archivosCollection)
           .where('expediente_id', isEqualTo: expedienteId)
           .where('eliminado', isEqualTo: false)
-          .orderBy('creado_el', descending: true)
           .get();
 
       return snapshot.docs
@@ -212,8 +221,12 @@ class CasoService {
       final snapshot = await _firestore
           .collection(_tiposCasoCollection)
           .where('eliminado', isEqualTo: false)
-          .orderBy('nombre_caso')
           .get();
+
+      print('🏷️ Tipos de caso encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        print('  - Tipo: ${doc.data()['nombre_caso']} (ID: ${doc.id})');
+      }
 
       return snapshot.docs
           .map((doc) => TipoCaso.fromMap(doc.data(), doc.id))
@@ -232,8 +245,12 @@ class CasoService {
       final snapshot = await _firestore
           .collection(_juzgadosCollection)
           .where('eliminado', isEqualTo: false)
-          .orderBy('nombre_juzgado')
           .get();
+
+      print('⚖️ Juzgados encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        print('  - Juzgado: ${doc.data()['nombre_juzgado']} (ID: ${doc.id})');
+      }
 
       return snapshot.docs
           .map((doc) => Juzgado.fromMap(doc.data(), doc.id))
@@ -252,8 +269,12 @@ class CasoService {
       final snapshot = await _firestore
           .collection(_legitariosCollection)
           .where('eliminado', isEqualTo: false)
-          .orderBy('nombre')
           .get();
+
+      print('👥 Legitarios encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        print('  - Legitario: ${doc.data()['nombre']} (ID: ${doc.id})');
+      }
 
       return snapshot.docs
           .map((doc) => Legitario.fromMap(doc.data(), doc.id))
@@ -272,10 +293,16 @@ class CasoService {
       final snapshot = await _firestore
           .collection(_procuradoresCollection)
           .where('eliminado', isEqualTo: false)
-          .orderBy('nombre')
           .get();
 
-      return snapshot.docs.map((doc) => Procurador.fromFirestore(doc)).toList();
+      print('👨‍💼 Procuradores encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        print('  - Procurador: ${doc.data()['nombre']} (ID: ${doc.id})');
+      }
+
+      return snapshot.docs
+          .map((doc) => Procurador.fromMap(doc.data(), doc.id))
+          .toList();
     } catch (e) {
       print('Error al obtener procuradores: $e');
       return [];
@@ -293,6 +320,10 @@ class CasoService {
       final enProceso = casos.where((c) => c.estado == 'en proceso').length;
       final finalizados = casos.where((c) => c.estado == 'finalizado').length;
       final retrasados = casos.where((c) => c.estado == 'retrasado').length;
+
+      print(
+        '📈 Estadísticas: P=$pendientes, EP=$enProceso, F=$finalizados, R=$retrasados, T=${casos.length}',
+      );
 
       return {
         'pendientes': pendientes,
@@ -536,6 +567,122 @@ class CasoService {
       print('✅ Datos de prueba creados exitosamente');
     } catch (e) {
       print('❌ Error al crear datos de prueba: $e');
+    }
+  }
+
+  // ========== MÉTODOS DE PRUEBA ==========
+
+  /// Obtiene todos los casos sin filtros (para pruebas)
+  static Future<List<Caso>> obtenerTodosLosCasos() async {
+    try {
+      final snapshot = await _firestore.collection(_casosCollection).get();
+
+      print('📊 Todos los casos encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        print(
+          '  - Caso: ${data['nombre_caso']} (ID: ${doc.id}, Eliminado: ${data['eliminado']})',
+        );
+      }
+
+      return snapshot.docs
+          .map((doc) => Caso.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error al obtener todos los casos: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene todos los tipos de caso sin filtros (para pruebas)
+  static Future<List<TipoCaso>> obtenerTodosLosTiposCaso() async {
+    try {
+      final snapshot = await _firestore.collection(_tiposCasoCollection).get();
+
+      print('🏷️ Todos los tipos de caso encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        print(
+          '  - Tipo: ${data['nombre_caso']} (ID: ${doc.id}, Eliminado: ${data['eliminado']})',
+        );
+      }
+
+      return snapshot.docs
+          .map((doc) => TipoCaso.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error al obtener todos los tipos de caso: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene todos los juzgados sin filtros (para pruebas)
+  static Future<List<Juzgado>> obtenerTodosLosJuzgados() async {
+    try {
+      final snapshot = await _firestore.collection(_juzgadosCollection).get();
+
+      print('⚖️ Todos los juzgados encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        print(
+          '  - Juzgado: ${data['nombre_juzgado']} (ID: ${doc.id}, Eliminado: ${data['eliminado']})',
+        );
+      }
+
+      return snapshot.docs
+          .map((doc) => Juzgado.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error al obtener todos los juzgados: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene todos los legitarios sin filtros (para pruebas)
+  static Future<List<Legitario>> obtenerTodosLosLegitarios() async {
+    try {
+      final snapshot = await _firestore.collection(_legitariosCollection).get();
+
+      print('👥 Todos los legitarios encontrados: ${snapshot.docs.length}');
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        print(
+          '  - Legitario: ${data['nombre']} (ID: ${doc.id}, Eliminado: ${data['eliminado']})',
+        );
+      }
+
+      return snapshot.docs
+          .map((doc) => Legitario.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error al obtener todos los legitarios: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene todos los procuradores sin filtros (para pruebas)
+  static Future<List<Procurador>> obtenerTodosLosProcuradores() async {
+    try {
+      final snapshot = await _firestore
+          .collection(_procuradoresCollection)
+          .get();
+
+      print(
+        '👨‍💼 Todos los procuradores encontrados: ${snapshot.docs.length}',
+      );
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        print(
+          '  - Procurador: ${data['nombre']} (ID: ${doc.id}, Eliminado: ${data['eliminado']})',
+        );
+      }
+
+      return snapshot.docs
+          .map((doc) => Procurador.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error al obtener todos los procuradores: $e');
+      return [];
     }
   }
 }

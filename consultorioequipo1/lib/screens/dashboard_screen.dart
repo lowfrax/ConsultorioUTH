@@ -63,6 +63,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _cargarDatosSinFiltros() async {
+    setState(() => isLoading = true);
+
+    try {
+      final casosData = await CasoService.obtenerTodosLosCasos();
+      final tiposCasoData = await CasoService.obtenerTodosLosTiposCaso();
+      final juzgadosData = await CasoService.obtenerTodosLosJuzgados();
+      final legitariosData = await CasoService.obtenerTodosLosLegitarios();
+      final procuradoresData = await CasoService.obtenerTodosLosProcuradores();
+
+      // Filtrar manualmente los datos no eliminados
+      final casosFiltrados = casosData.where((c) => !c.eliminado).toList();
+      final tiposFiltrados = tiposCasoData.where((t) => !t.eliminado).toList();
+      final juzgadosFiltrados = juzgadosData
+          .where((j) => !j.eliminado)
+          .toList();
+      final legitariosFiltrados = legitariosData
+          .where((l) => !l.eliminado)
+          .toList();
+      final procuradoresFiltrados = procuradoresData
+          .where((p) => !p.eliminado)
+          .toList();
+
+      // Calcular estadísticas manualmente
+      final estadisticasData = {
+        'pendientes': casosFiltrados
+            .where((c) => c.estado == 'pendiente')
+            .length,
+        'en_proceso': casosFiltrados
+            .where((c) => c.estado == 'en proceso')
+            .length,
+        'finalizados': casosFiltrados
+            .where((c) => c.estado == 'finalizado')
+            .length,
+        'retrasados': casosFiltrados
+            .where((c) => c.estado == 'retrasado')
+            .length,
+        'total': casosFiltrados.length,
+      };
+
+      setState(() {
+        casos = casosFiltrados;
+        tiposCaso = tiposFiltrados;
+        juzgados = juzgadosFiltrados;
+        legitarios = legitariosFiltrados;
+        procuradores = procuradoresFiltrados;
+        estadisticas = estadisticasData;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error al cargar datos sin filtros: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
   void _cambiarEstado(Caso caso) async {
     final nuevoEstado = await showModalBottomSheet<String>(
       context: context,
@@ -295,6 +350,94 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.add_circle),
             onPressed: _crearDatosPrueba,
             tooltip: 'Crear datos de prueba',
+          ),
+          // Botón para probar carga de datos
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              setState(() => isLoading = true);
+              await _cargarDatos();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Datos cargados: ${casos.length} casos, ${tiposCaso.length} tipos, ${juzgados.length} juzgados, ${legitarios.length} legitarios, ${procuradores.length} procuradores',
+                    ),
+                  ),
+                );
+              }
+            },
+            tooltip: 'Recargar datos',
+          ),
+          // Botón para diagnóstico
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () async {
+              setState(() => isLoading = true);
+
+              try {
+                final todosCasos = await CasoService.obtenerTodosLosCasos();
+                final todosTipos = await CasoService.obtenerTodosLosTiposCaso();
+                final todosJuzgados =
+                    await CasoService.obtenerTodosLosJuzgados();
+                final todosLegitarios =
+                    await CasoService.obtenerTodosLosLegitarios();
+                final todosProcuradores =
+                    await CasoService.obtenerTodosLosProcuradores();
+
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Diagnóstico de Datos'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('📊 Todos los casos: ${todosCasos.length}'),
+                          Text('🏷️ Todos los tipos: ${todosTipos.length}'),
+                          Text(
+                            '⚖️ Todos los juzgados: ${todosJuzgados.length}',
+                          ),
+                          Text(
+                            '👥 Todos los legitarios: ${todosLegitarios.length}',
+                          ),
+                          Text(
+                            '👨‍💼 Todos los procuradores: ${todosProcuradores.length}',
+                          ),
+                          const SizedBox(height: 10),
+                          Text('📊 Casos filtrados: ${casos.length}'),
+                          Text('🏷️ Tipos filtrados: ${tiposCaso.length}'),
+                          Text('⚖️ Juzgados filtrados: ${juzgados.length}'),
+                          Text('👥 Legitarios filtrados: ${legitarios.length}'),
+                          Text(
+                            '👨‍💼 Procuradores filtrados: ${procuradores.length}',
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cerrar'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _cargarDatosSinFiltros();
+                          },
+                          child: const Text('Cargar sin filtros'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              } catch (e) {
+                print('Error en diagnóstico: $e');
+              } finally {
+                setState(() => isLoading = false);
+              }
+            },
+            tooltip: 'Diagnóstico de datos',
           ),
           // Botón para escanear documentos
           IconButton(

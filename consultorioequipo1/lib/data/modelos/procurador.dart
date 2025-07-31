@@ -12,8 +12,8 @@ class Procurador {
   final DocumentReference? idCuatrimestre;
   final DocumentReference? idRol;
   final bool eliminado;
-  final DateTime creadoEl;
-  final DateTime actualizadoEl;
+  final DateTime? creadoEl;
+  final DateTime? actualizadoEl;
 
   Procurador({
     this.id,
@@ -27,8 +27,8 @@ class Procurador {
     this.idCuatrimestre,
     this.idRol,
     this.eliminado = false,
-    required this.creadoEl,
-    required this.actualizadoEl,
+    this.creadoEl,
+    this.actualizadoEl,
   });
 
   factory Procurador.fromFirestore(DocumentSnapshot doc) {
@@ -45,8 +45,35 @@ class Procurador {
       idCuatrimestre: data['id_cuatrimestre'],
       idRol: data['id_rol'],
       eliminado: data['eliminado'] ?? false,
-      creadoEl: (data['creado_el'] as Timestamp).toDate(),
-      actualizadoEl: (data['actualizado_el'] as Timestamp).toDate(),
+      creadoEl: data['creado_el'] != null
+          ? (data['creado_el'] as Timestamp).toDate()
+          : null,
+      actualizadoEl: data['actualizado_el'] != null
+          ? (data['actualizado_el'] as Timestamp).toDate()
+          : null,
+    );
+  }
+
+  factory Procurador.fromMap(Map<String, dynamic> map, String documentId) {
+    return Procurador(
+      id: documentId,
+      nombre: map['nombre'] ?? '',
+      usuario: map['usuario'] ?? '',
+      password: map['password'] ?? '',
+      email: map['email'] ?? '',
+      telefono:
+          map['teléfono']?.toString() ?? map['telefono']?.toString() ?? '',
+      nCuenta: map['n_cuenta']?.toString() ?? '',
+      idClase: map['id_clase'],
+      idCuatrimestre: map['id_cuatrimestre'],
+      idRol: map['id_rol'],
+      eliminado: map['eliminado'] ?? false,
+      creadoEl: map['creado_el'] != null
+          ? (map['creado_el'] as Timestamp).toDate()
+          : null,
+      actualizadoEl: map['actualizado_el'] != null
+          ? (map['actualizado_el'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -62,8 +89,10 @@ class Procurador {
       'id_cuatrimestre': idCuatrimestre,
       'id_rol': idRol,
       'eliminado': eliminado,
-      'creado_el': Timestamp.fromDate(creadoEl),
-      'actualizado_el': Timestamp.fromDate(actualizadoEl),
+      'creado_el': creadoEl != null
+          ? Timestamp.fromDate(creadoEl!)
+          : FieldValue.serverTimestamp(),
+      'actualizado_el': FieldValue.serverTimestamp(),
     };
   }
 }
