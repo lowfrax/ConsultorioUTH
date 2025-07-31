@@ -36,7 +36,6 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
   final TextEditingController _nombreCasoController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
   final TextEditingController _costoController = TextEditingController();
-  final TextEditingController _procuradorController = TextEditingController();
   DateTime? _fechaLimite;
 
   TipoCaso? _selectedTipoCaso;
@@ -50,10 +49,11 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
   List<Legitario> _legitarios = [];
   List<Legitario> _demandantes = [];
   List<Legitario> _demandados = [];
+  List<Procurador> _procuradores = [];
 
   // Procurador actual (obtenido del login)
   Map<String, dynamic>? _procuradorActual;
-  String? _procuradorId;
+  Procurador? _selectedProcurador;
 
   bool _isLoading = false;
   String? _expedienteId;
@@ -70,17 +70,13 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
     try {
       // Obtener el procurador actual del login
       _procuradorActual = AuthService.procuradorActual;
-      _procuradorController.text =
-          _procuradorActual?['nombre'] ?? 'No disponible';
-      _procuradorId =
-          _procuradorActual?['id'] ?? _procuradorActual?['documentId'];
 
       print('👤 Procurador actual:');
       print('  - Nombre: ${_procuradorActual?['nombre']}');
-      print('  - ID: $_procuradorId');
       print('  - Datos completos: $_procuradorActual');
 
       final tiposCaso = await CasoService.obtenerTiposCaso();
+      final procuradores = await CasoService.obtenerProcuradores();
       final juzgados = await CasoService.obtenerJuzgados();
       final legitarios = await CasoService.obtenerLegitarios();
 
@@ -92,6 +88,7 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
 
       print('📊 Datos cargados:');
       print('  - Tipos de caso: ${tiposCaso.length}');
+      print('  - Procuradores: ${procuradores.length}');
       print('  - Juzgados: ${juzgados.length}');
       print('  - Legitarios total: ${legitarios.length}');
       print('  - Demandantes: ${demandantes.length}');
@@ -99,6 +96,7 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
 
       setState(() {
         _tiposCaso = tiposCaso;
+        _procuradores = procuradores;
         _juzgados = juzgados;
         _legitarios = legitarios;
         _demandantes = demandantes;
@@ -228,17 +226,28 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
   Future<void> _crearCaso() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedTipoCaso == null ||
-        _selectedJuzgado == null ||
-        _selectedDemandante == null ||
-        _selectedDemandado == null ||
-        _fechaLimite == null ||
-        _procuradorId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor completa todos los campos requeridos'),
-        ),
-      );
+    // Validación específica de cada campo
+    String? errorMessage;
+    if (_selectedTipoCaso == null) {
+      errorMessage = 'Por favor selecciona un tipo de caso';
+    } else if (_selectedProcurador == null) {
+      errorMessage = 'Por favor selecciona un procurador';
+    } else if (_selectedJuzgado == null) {
+      errorMessage = 'Por favor selecciona un juzgado';
+    } else if (_selectedDemandante == null) {
+      errorMessage = 'Por favor selecciona un demandante';
+    } else if (_selectedDemandado == null) {
+      errorMessage = 'Por favor selecciona un demandado';
+    } else if (_fechaLimite == null) {
+      errorMessage = 'Por favor selecciona una fecha límite';
+    } else if (_costoController.text.isEmpty) {
+      errorMessage = 'Por favor ingresa el costo';
+    }
+
+    if (errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
       return;
     }
 
@@ -246,17 +255,21 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
 
     try {
       print('📝 Creando caso...');
-      print('  - Procurador ID: $_procuradorId');
+      print(
+        '  - Procurador: ${_selectedProcurador!.nombre} (ID: ${_selectedProcurador!.id})',
+      );
       print('  - Tipo de caso: ${_selectedTipoCaso!.nombreCaso}');
       print('  - Juzgado: ${_selectedJuzgado!.nombreJuzgado}');
       print('  - Demandante: ${_selectedDemandante!.nombre}');
       print('  - Demandado: ${_selectedDemandado!.nombre}');
+      print('  - Fecha límite: $_fechaLimite');
+      print('  - Costo: ${_costoController.text}');
 
       final caso = Caso(
         nombreCaso: _nombreCasoController.text,
         tipocasoId: _selectedTipoCaso!.id!,
         expedienteId: _expedienteId!,
-        procuradorId: _procuradorId!,
+        procuradorId: _selectedProcurador!.id!,
         descripcion: _descripcionController.text,
         demandanteId: _selectedDemandante!.id!,
         demandadoId: _selectedDemandado!.id!,
@@ -543,15 +556,27 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
                         const SizedBox(height: 10),
 
                         const Text('Procurador asignado:'),
-                        TextFormField(
-                          controller: _procuradorController,
-                          enabled: false,
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.grey[200],
-                            hintText: 'Procurador asignado',
+                        DropdownButtonFormField<Procurador>(
+                          value: _selectedProcurador,
+                          items: _procuradores
+                              .map(
+                                (procurador) => DropdownMenuItem(
+                                  value: procurador,
+                                  child: Text(procurador.nombre),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => _selectedProcurador = value),
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
                           ),
+                          validator: (value) {
+                            if (value == null) {
+                              return 'Por favor selecciona un procurador';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 10),
 
@@ -663,27 +688,36 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
                         const SizedBox(height: 10),
 
                         const Text('Fecha límite:'),
-                        InkWell(
-                          onTap: _selectDate,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.calendar_today, color: greenColor),
-                                const SizedBox(width: 10),
-                                Text(
-                                  _fechaLimite != null
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                readOnly: true,
+                                controller: TextEditingController(
+                                  text: _fechaLimite != null
                                       ? '${_fechaLimite!.day}/${_fechaLimite!.month}/${_fechaLimite!.year}'
                                       : 'Seleccionar fecha',
                                 ),
-                              ],
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  suffixIcon: Icon(Icons.calendar_today),
+                                ),
+                                validator: (value) {
+                                  if (_fechaLimite == null) {
+                                    return 'Por favor selecciona una fecha límite';
+                                  }
+                                  return null;
+                                },
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 10),
+                            ElevatedButton(
+                              onPressed: _selectDate,
+                              child: const Text('Seleccionar'),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
@@ -700,7 +734,6 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
     _nombreCasoController.dispose();
     _descripcionController.dispose();
     _costoController.dispose();
-    _procuradorController.dispose();
     super.dispose();
   }
 }
