@@ -7,16 +7,18 @@ import 'data/recursos/db.dart';
 import 'data/recursos/auth_service.dart';
 import 'test_firebase.dart';
 import 'test_login.dart';
+import 'package:camera/camera.dart';
 
+List<CameraDescription> cameras = [];
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  cameras = await availableCameras();
 
   try {
     // Inicialización de Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-
     print('🚀 Firebase inicializado correctamente');
 
     // Ejecutar pruebas de Firebase

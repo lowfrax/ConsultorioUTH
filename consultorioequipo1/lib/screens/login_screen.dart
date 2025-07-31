@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import '../data/recursos/auth_service.dart';
 import '../data/recursos/firebase_service.dart';
+import 'package:camera/camera.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

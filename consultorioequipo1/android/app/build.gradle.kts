@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.example.consultorioequipo1"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
 
     // ✅ Versión específica del NDK requerida por Firebase y otros plugins
      ndkVersion = "29.0.13599879"

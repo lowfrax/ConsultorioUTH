@@ -3,6 +3,11 @@ import 'case_form_screen.dart';
 import 'expedientes_screen.dart';
 import '../models/caso.dart';
 import '../data/recursos/firebase_service.dart';
+import 'pdfviewer.dart';
+import 'img_preview.dart';
+import 'package:camera/camera.dart';
+
+late final List<CameraDescription> cameras;
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -180,6 +185,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => PdfViewerScreen()),
+              );
+            },
+            tooltip: 'Ver PDFs',
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.camera_alt,
+              size: 32,
+            ), // Icono de cámara más grande
+            tooltip:
+                'Escanear Documento', // Texto que aparece al mantener presionado
+            onPressed: () async {
+              final cameras = await availableCameras();
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ImagePreviewScreen(initialImages: [], cameras: cameras),
+                ),
+              );
+
+              if (result == true && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Documento guardado exitosamente'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+          ),
           // Botón para verificación rápida
           IconButton(
             icon: const Icon(Icons.cloud_sync),
@@ -532,6 +574,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             child: const Text('Nuevo Caso'),
           ),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
             child: TextField(
