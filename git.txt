@@ -67,6 +67,8 @@ en la rama que se quiere actualizar y especificar de la que se tomaran los datos
 (git branch -r) muestra todas las ramas locales
 
 
+*************** push de una rama a otra un commit hacer un log para ver el codigo del commit
+git push origin 5ed2fca99a58abe72b0db7ad39644b518e136ad9:refs/heads/test-2
 
 
 
