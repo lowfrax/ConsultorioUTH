@@ -159,65 +159,30 @@ class CasoService {
     String procuradorId,
   ) async {
     try {
-      print('🔍 Buscando casos para procurador: $procuradorId');
+      final query = await FirebaseFirestore.instance
+          .collection('Casos')
+          .where('procuradorId', isEqualTo: procuradorId)
+          .get();
 
-      final query = _firestore
-          .collection(_casosCollection)
-          .where('procurador_id', isEqualTo: procuradorId)
-          .where('eliminado', isEqualTo: false);
-
-      final snapshot = await query.get();
-      print('📦 Documentos encontrados: ${snapshot.docs.length}');
-
-      final casos = <Caso>[];
-
-      for (final doc in snapshot.docs) {
-        print('\n📄 Procesando caso ID: ${doc.id}');
-        print('📋 Datos del caso: ${doc.data()}');
-
-        // Cargar expediente relacionado
-        Expediente? expediente;
-        final expedienteId = doc['expediente_id'];
-        if (expedienteId != null) {
-          print('🔍 Buscando expediente ID: $expedienteId');
-          final expedienteDoc = await _firestore
-              .collection(_expedientesCollection)
-              .doc(expedienteId)
-              .get();
-
-          if (expedienteDoc.exists) {
-            expediente = Expediente.fromMap(
-              expedienteDoc.data()!,
-              expedienteDoc.id,
-            );
-            print('✅ Expediente encontrado: ${expediente.nombreExpediente}');
-          } else {
-            print('⚠️ Expediente no encontrado');
-          }
-        }
-
-        // Cargar archivos del expediente
-        List<ArchivoExpediente> archivos = [];
-        if (expedienteId != null) {
-          print('🔍 Buscando archivos para expediente: $expedienteId');
-          archivos = await obtenerArchivosExpediente(expedienteId);
-          print('📁 Archivos encontrados: ${archivos.length}');
-        }
-
-        // Crear caso con relaciones
-        final caso = Caso.fromMap(
-          doc.data(),
-          doc.id,
-        ).copyWith(expediente: expediente, archivos: archivos);
-
-        casos.add(caso);
-        print('✅ Caso agregado: ${caso.nombreCaso}');
-      }
-
-      return casos;
+      return query.docs.map((doc) {
+        final data = doc.data();
+        return Caso(
+          id: doc.id,
+          nombreCaso: data['nombreCaso'] ?? '',
+          tipocasoId: data['tipocasoId'] ?? '',
+          expedienteId: data['expedienteId'] ?? '',
+          procuradorId: data['procuradorId'] ?? '',
+          descripcion: data['descripcion'] ?? '',
+          demandanteId: data['demandanteId'] ?? '',
+          demandadoId: data['demandadoId'] ?? '',
+          juzgadoId: data['juzgadoId'] ?? '',
+          plazo: (data['plazo'] as Timestamp).toDate(),
+          costo: (data['costo'] as num).toDouble(),
+          estado: data['estado'] ?? 'pendiente',
+        );
+      }).toList();
     } catch (e) {
-      print('❌ Error al obtener casos por procurador: $e');
-      print('❌ Stack trace: ${e is Error ? e.stackTrace : ''}');
+      print('Error al obtener casos: $e');
       return [];
     }
   }

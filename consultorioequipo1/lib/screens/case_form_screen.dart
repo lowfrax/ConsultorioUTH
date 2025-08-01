@@ -68,46 +68,52 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
       _errorMessage = null;
     });
 
-    Future<void> _cargarDatosIniciales() async {
+    try {
+      // Load all data in parallel for better performance
+      final results = await Future.wait([
+        CasoService.obtenerTiposCaso(),
+        CasoService.obtenerJuzgados(),
+        CasoService.obtenerLegitariosPorRol('demandante'),
+        CasoService.obtenerLegitariosPorRol('demandado'),
+        CasoService.obtenerProcuradores(),
+      ]);
+
       setState(() {
-        _isLoading = true;
-        _errorMessage = null;
+        _tiposCaso = results[0] as List<TipoCaso>;
+        _juzgados = results[1] as List<Juzgado>;
+        _demandantes = results[2] as List<Legitario>;
+        _demandados = results[3] as List<Legitario>;
+        _procuradores = results[4] as List<Procurador>;
       });
 
+      // Auto-select the logged-in procurador after data is loaded
+      _autoSelectProcurador();
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error al cargar datos: ${e.toString()}';
+      });
+      debugPrint('Error loading initial data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _autoSelectProcurador() {
+    final currentUser = AuthService.procuradorActual;
+    if (currentUser != null && _procuradores.isNotEmpty) {
       try {
-        // Load each data type separately with proper typing
-        final List<TipoCaso> tiposCaso = await CasoService.obtenerTiposCaso();
-        final List<Juzgado> juzgados = await CasoService.obtenerJuzgados();
-        final List<Legitario> demandantes =
-            await CasoService.obtenerLegitariosPorRol('demandante');
-        final List<Legitario> demandados =
-            await CasoService.obtenerLegitariosPorRol('demandado');
-        final List<Procurador> procuradores =
-            await CasoService.obtenerProcuradores();
-
-        setState(() {
-          _tiposCaso = tiposCaso;
-          _juzgados = juzgados;
-          _demandantes = demandantes;
-          _demandados = demandados;
-          _procuradores = procuradores;
-
-          // Auto-select the logged-in procurador if available
-          final currentUser = AuthService.procuradorActual;
-          if (currentUser != null) {
-            _selectedProcurador = _procuradores.firstWhere(
-              (p) => p.id == currentUser['id'],
-              orElse: () => _procuradores.first,
-            );
-          }
-        });
+        final procurador = _procuradores.firstWhere(
+          (p) => p.id == currentUser['id'], // Asegúrate que coincidan los IDs
+          orElse: () => _procuradores.first, // Fallback al primer procurador
+        );
+        setState(() => _selectedProcurador = procurador);
       } catch (e) {
-        setState(() {
-          _errorMessage = 'Error al cargar datos: ${e.toString()}';
-        });
-        debugPrint('Error loading initial data: $e');
-      } finally {
-        setState(() => _isLoading = false);
+        debugPrint('Error al seleccionar procurador: $e');
+        setState(
+          () => _selectedProcurador = _procuradores.isNotEmpty
+              ? _procuradores.first
+              : null,
+        );
       }
     }
   }
@@ -484,7 +490,7 @@ class _CaseFormScreenState extends State<CaseFormScreen> {
                       items: _procuradores.map((procurador) {
                         return DropdownMenuItem(
                           value: procurador,
-                          child: Text(procurador.nombre),
+                          child: Text(procurador.nombre ?? 'Sin nombre'),
                         );
                       }).toList(),
                       onChanged: (value) =>

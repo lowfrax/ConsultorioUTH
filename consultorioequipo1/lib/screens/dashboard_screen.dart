@@ -106,22 +106,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final procuradorId = procurador['id'];
       print('🔍 Procurador actual ID: $procuradorId');
 
-      // Verificar si el ID existe en la colección de procuradores
-      final procuradorDoc = await FirebaseFirestore.instance
-          .collection('Procuradores')
-          .doc(procuradorId)
-          .get();
+      // Cargar todos los datos necesarios en paralelo
+      final results = await Future.wait([
+        CasoService.obtenerCasosPorProcurador(procuradorId),
+        CasoService.obtenerTiposCaso(),
+        CasoService.obtenerJuzgados(),
+        CasoService.obtenerLegitariosPorRol('demandante'),
+        CasoService.obtenerLegitariosPorRol('demandado'),
+        CasoService.obtenerProcuradores(),
+      ]);
 
-      if (!procuradorDoc.exists) {
-        print('❌ No existe un procurador con ID $procuradorId');
-        setState(() => isLoading = false);
-        return;
-      }
-
-      print('📊 Cargando casos del procurador...');
-      final casosData = await CasoService.obtenerCasosPorProcurador(
-        procuradorId,
-      );
+      final casosData = results[0] as List<Caso>;
       print('✅ Casos cargados: ${casosData.length}');
 
       // Debug: imprimir los casos obtenidos
@@ -136,8 +131,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       setState(() {
         casos = casosData;
+        tiposCaso = results[1] as List<TipoCaso>;
+        juzgados = results[2] as List<Juzgado>;
+        legitarios = [
+          ...(results[3] as List<Legitario>),
+          ...(results[4] as List<Legitario>),
+        ];
+        procuradores = results[5] as List<Procurador>;
+        estadisticas = _calcularEstadisticas(casosData);
         isLoading = false;
       });
+
+      print('📊 Estadísticas calculadas: $estadisticas');
     } catch (e) {
       print('❌ Error al cargar datos: $e');
       setState(() => isLoading = false);
@@ -371,7 +376,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final procurador = procuradores.firstWhere(
       (p) => p.id == procuradorId,
       orElse: () => Procurador(
-        nombre: 'Desconocido',
+        nombre: '',
         usuario: '',
         password: '',
         email: '',
