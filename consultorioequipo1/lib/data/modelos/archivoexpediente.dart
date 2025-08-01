@@ -31,17 +31,21 @@ class ArchivoExpediente {
   ) => ArchivoExpediente(
     id: documentId,
     expedienteId: map['expediente_id'] ?? '',
-    urlArchivo: map['url_archivo'] ?? '',
+    urlArchivo: map['url_archivo'],
     nombreArchivo: map['nombre_archivo'] ?? '',
     formatoEntrada: map['formato_entrada'] ?? '',
     formatoActual: map['formato_actual'] ?? '',
-    rutaLocal: map['ruta_local'] ?? null,
+    rutaLocal: map['ruta_local'],
     eliminado: map['eliminado'] ?? false,
     creadoEl: map['creado_el'] != null
-        ? (map['creado_el'] as Timestamp).toDate()
+        ? (map['creado_el'] is Timestamp
+              ? (map['creado_el'] as Timestamp).toDate()
+              : DateTime.parse(map['creado_el'].toString()))
         : null,
     actualizadoEl: map['actualizado_el'] != null
-        ? (map['actualizado_el'] as Timestamp).toDate()
+        ? (map['actualizado_el'] is Timestamp
+              ? (map['actualizado_el'] as Timestamp).toDate()
+              : DateTime.parse(map['actualizado_el'].toString()))
         : null,
   );
 

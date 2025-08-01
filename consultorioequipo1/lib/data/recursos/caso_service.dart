@@ -30,19 +30,36 @@ class CasoService {
   /// Obtiene todos los casos
   static Future<List<Caso>> obtenerCasos() async {
     try {
+      print('🔍 Obteniendo todos los casos...');
+
       final snapshot = await _firestore
           .collection(_casosCollection)
           .where('eliminado', isEqualTo: false)
           .get();
 
       print('📊 Casos encontrados: ${snapshot.docs.length}');
+
+      final casos = <Caso>[];
       for (final doc in snapshot.docs) {
-        print('  - Caso: ${doc.data()['nombre_caso']} (ID: ${doc.id})');
+        try {
+          print('  📄 Procesando caso ID: ${doc.id}');
+          print('  📋 Datos del caso: ${doc.data()}');
+
+          final caso = Caso.fromMap(doc.data(), doc.id);
+          print('  ✅ Caso procesado: ${caso.nombreCaso}');
+          casos.add(caso);
+        } catch (e) {
+          print('  ❌ Error al procesar caso ${doc.id}: $e');
+          print('  📋 Datos problemáticos: ${doc.data()}');
+          // Continuar con el siguiente caso
+        }
       }
 
-      return snapshot.docs.map((doc) => Caso.fromMap(doc.data())).toList();
+      print('🎯 Total de casos procesados: ${casos.length}');
+      return casos;
     } catch (e) {
-      print('Error al obtener casos: $e');
+      print('❌ Error al obtener casos: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       return [];
     }
   }
@@ -283,14 +300,39 @@ class CasoService {
   // ========== EXPEDIENTES ==========
 
   static Future<List<Expediente>> obtenerExpedientes() async {
-    final snapshot = await _firestore
-        .collection(_expedientesCollection)
-        .where('eliminado', isEqualTo: false)
-        .get();
+    try {
+      print('🔍 Obteniendo expedientes...');
 
-    return snapshot.docs
-        .map((doc) => Expediente.fromMap(doc.data(), doc.id))
-        .toList();
+      final snapshot = await _firestore
+          .collection(_expedientesCollection)
+          .where('eliminado', isEqualTo: false)
+          .get();
+
+      print('📁 Expedientes encontrados: ${snapshot.docs.length}');
+
+      final expedientes = <Expediente>[];
+      for (final doc in snapshot.docs) {
+        try {
+          print('  📄 Procesando expediente ID: ${doc.id}');
+          print('  📋 Datos del expediente: ${doc.data()}');
+
+          final expediente = Expediente.fromMap(doc.data(), doc.id);
+          print('  ✅ Expediente procesado: ${expediente.nombreExpediente}');
+          expedientes.add(expediente);
+        } catch (e) {
+          print('  ❌ Error al procesar expediente ${doc.id}: $e');
+          print('  📋 Datos problemáticos: ${doc.data()}');
+          // Continuar con el siguiente expediente
+        }
+      }
+
+      print('🎯 Total de expedientes procesados: ${expedientes.length}');
+      return expedientes;
+    } catch (e) {
+      print('❌ Error al obtener expedientes: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
+      return [];
+    }
   }
 
   /// Crea un nuevo expediente
@@ -410,6 +452,8 @@ class CasoService {
           print(
             '  ❌ Error al crear ArchivoExpediente desde documento ${doc.id}: $e',
           );
+          print('  📋 Datos problemáticos: ${doc.data()}');
+          // Continuar con el siguiente archivo en lugar de fallar completamente
         }
       }
 
@@ -419,6 +463,7 @@ class CasoService {
       return archivos;
     } catch (e) {
       print('❌ Error al obtener archivos del expediente: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       return [];
     }
   }
@@ -1424,6 +1469,118 @@ class CasoService {
     } catch (e) {
       print('❌ Error al subir archivo a Firebase: $e');
       return null;
+    }
+  }
+
+  /// Método de prueba para verificar la conexión y datos de Firebase
+  static Future<Map<String, dynamic>> probarConexionYDatos() async {
+    final resultados = <String, dynamic>{};
+
+    try {
+      print('🧪 Iniciando pruebas de conexión y datos...');
+
+      // 1. Probar conexión básica
+      try {
+        final testDoc = await _firestore.collection('test').limit(1).get();
+        resultados['conexion_basica'] = true;
+        print('✅ Conexión básica exitosa');
+      } catch (e) {
+        resultados['conexion_basica'] = false;
+        print('❌ Error en conexión básica: $e');
+      }
+
+      // 2. Probar colección de casos
+      try {
+        final casosSnapshot = await _firestore
+            .collection(_casosCollection)
+            .limit(5)
+            .get();
+        resultados['casos_disponibles'] = casosSnapshot.docs.length;
+        print('📊 Casos disponibles: ${casosSnapshot.docs.length}');
+
+        if (casosSnapshot.docs.isNotEmpty) {
+          print('📋 Ejemplo de caso:');
+          final ejemploCaso = casosSnapshot.docs.first.data();
+          ejemploCaso.forEach((key, value) {
+            print('  $key: $value');
+          });
+        }
+      } catch (e) {
+        resultados['casos_disponibles'] = 0;
+        print('❌ Error al obtener casos: $e');
+      }
+
+      // 3. Probar colección de expedientes
+      try {
+        final expedientesSnapshot = await _firestore
+            .collection(_expedientesCollection)
+            .limit(5)
+            .get();
+        resultados['expedientes_disponibles'] = expedientesSnapshot.docs.length;
+        print('📁 Expedientes disponibles: ${expedientesSnapshot.docs.length}');
+
+        if (expedientesSnapshot.docs.isNotEmpty) {
+          print('📋 Ejemplo de expediente:');
+          final ejemploExpediente = expedientesSnapshot.docs.first.data();
+          ejemploExpediente.forEach((key, value) {
+            print('  $key: $value');
+          });
+        }
+      } catch (e) {
+        resultados['expedientes_disponibles'] = 0;
+        print('❌ Error al obtener expedientes: $e');
+      }
+
+      // 4. Probar colección de archivos
+      try {
+        final archivosSnapshot = await _firestore
+            .collection(_archivosCollection)
+            .limit(5)
+            .get();
+        resultados['archivos_disponibles'] = archivosSnapshot.docs.length;
+        print('📄 Archivos disponibles: ${archivosSnapshot.docs.length}');
+
+        if (archivosSnapshot.docs.isNotEmpty) {
+          print('📋 Ejemplo de archivo:');
+          final ejemploArchivo = archivosSnapshot.docs.first.data();
+          ejemploArchivo.forEach((key, value) {
+            print('  $key: $value');
+          });
+        }
+      } catch (e) {
+        resultados['archivos_disponibles'] = 0;
+        print('❌ Error al obtener archivos: $e');
+      }
+
+      // 5. Probar colección de procuradores
+      try {
+        final procuradoresSnapshot = await _firestore
+            .collection(_procuradoresCollection)
+            .limit(5)
+            .get();
+        resultados['procuradores_disponibles'] =
+            procuradoresSnapshot.docs.length;
+        print(
+          '👥 Procuradores disponibles: ${procuradoresSnapshot.docs.length}',
+        );
+
+        if (procuradoresSnapshot.docs.isNotEmpty) {
+          print('📋 Ejemplo de procurador:');
+          final ejemploProcurador = procuradoresSnapshot.docs.first.data();
+          ejemploProcurador.forEach((key, value) {
+            print('  $key: $value');
+          });
+        }
+      } catch (e) {
+        resultados['procuradores_disponibles'] = 0;
+        print('❌ Error al obtener procuradores: $e');
+      }
+
+      print('🎯 Pruebas completadas');
+      return resultados;
+    } catch (e) {
+      print('💥 Error general en las pruebas: $e');
+      return {'error': true, 'mensaje': e.toString()};
     }
   }
 }

@@ -39,14 +39,21 @@ class _ExpedientesScreenState extends State<ExpedientesScreen> {
           '📂 Cargando archivos para expediente ${i + 1}/${expedientesData.length}: ${expediente.nombreExpediente} (ID: ${expediente.id})',
         );
 
-        final archivos = await CasoService.obtenerArchivosExpediente(
-          expediente.id!,
-        );
-        print(
-          '📄 Archivos encontrados para ${expediente.nombreExpediente}: ${archivos.length}',
-        );
+        try {
+          final archivos = await CasoService.obtenerArchivosExpediente(
+            expediente.id!,
+          );
+          print(
+            '📄 Archivos encontrados para ${expediente.nombreExpediente}: ${archivos.length}',
+          );
 
-        archivosMap[expediente.id!] = archivos;
+          archivosMap[expediente.id!] = archivos;
+        } catch (e) {
+          print(
+            '❌ Error al cargar archivos para expediente ${expediente.id}: $e',
+          );
+          archivosMap[expediente.id!] = [];
+        }
       }
 
       setState(() {
@@ -59,6 +66,7 @@ class _ExpedientesScreenState extends State<ExpedientesScreen> {
       print('📊 Total de expedientes con archivos: ${archivosMap.length}');
     } catch (e) {
       print('❌ Error al cargar expedientes: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       setState(() => isLoading = false);
     }
   }

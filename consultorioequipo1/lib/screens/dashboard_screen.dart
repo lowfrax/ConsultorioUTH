@@ -99,12 +99,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final procurador = AuthService.procuradorActual;
       if (procurador == null || procurador['id'] == null) {
         print('❌ No hay procurador autenticado o falta ID');
+        print('📋 Datos del procurador actual: $procurador');
         setState(() => isLoading = false);
         return;
       }
 
       final procuradorId = procurador['id'];
       print('🔍 Procurador actual ID: $procuradorId');
+      print('📋 Datos completos del procurador: $procurador');
 
       // Verificar si el ID existe en la colección de procuradores
       final procuradorDoc = await FirebaseFirestore.instance
@@ -114,9 +116,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (!procuradorDoc.exists) {
         print('❌ No existe un procurador con ID $procuradorId');
+        print('🔍 Verificando todos los procuradores disponibles...');
+
+        // Listar todos los procuradores para debug
+        final todosProcuradores = await FirebaseFirestore.instance
+            .collection('Procuradores')
+            .where('eliminado', isEqualTo: false)
+            .get();
+
+        print('📊 Procuradores disponibles:');
+        for (final doc in todosProcuradores.docs) {
+          print('  - ID: ${doc.id}, Nombre: ${doc.data()['nombre']}');
+        }
+
         setState(() => isLoading = false);
         return;
       }
+
+      print('✅ Procurador verificado en la base de datos');
+      print('📋 Datos del procurador en BD: ${procuradorDoc.data()}');
 
       print('📊 Cargando casos del procurador...');
       final casosData = await CasoService.obtenerCasosPorProcurador(
@@ -140,6 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     } catch (e) {
       print('❌ Error al cargar datos: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       setState(() => isLoading = false);
     }
   }
@@ -505,6 +524,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _ejecutarPruebas() async {
+    try {
+      print('🧪 Ejecutando pruebas de conexión y datos...');
+
+      final resultados = await CasoService.probarConexionYDatos();
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Resultados de Pruebas'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Conexión básica: ${resultados['conexion_basica'] ?? 'N/A'}',
+                  ),
+                  Text(
+                    'Casos disponibles: ${resultados['casos_disponibles'] ?? 0}',
+                  ),
+                  Text(
+                    'Expedientes disponibles: ${resultados['expedientes_disponibles'] ?? 0}',
+                  ),
+                  Text(
+                    'Archivos disponibles: ${resultados['archivos_disponibles'] ?? 0}',
+                  ),
+                  Text(
+                    'Procuradores disponibles: ${resultados['procuradores_disponibles'] ?? 0}',
+                  ),
+                  if (resultados.containsKey('error'))
+                    Text('Error: ${resultados['mensaje'] ?? 'Desconocido'}'),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error al ejecutar pruebas: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al ejecutar pruebas: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color greenColor = Colors.green[800]!;
@@ -514,6 +588,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('Dashboard'),
         backgroundColor: greenColor,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: _ejecutarPruebas,
+            tooltip: 'Ejecutar Pruebas',
+          ),
           IconButton(
             icon: const Icon(Icons.camera_alt, size: 32),
             tooltip: 'Escanear Documento',
