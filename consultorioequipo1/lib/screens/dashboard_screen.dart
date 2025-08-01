@@ -6,11 +6,19 @@ import '../data/modelos/tipocaso.dart';
 import '../data/modelos/juzgado.dart';
 import '../data/modelos/legitario.dart';
 import '../data/modelos/procurador.dart';
+import '../data/modelos/expediente.dart';
+import '../data/modelos/archivoexpediente.dart';
 import '../data/recursos/caso_service.dart';
 import '../data/recursos/firebase_service.dart';
 import 'pdfviewer.dart';
 import 'img_preview.dart';
 import 'package:camera/camera.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'widget.dart';
+import 'package:intl/intl.dart';
+import 'package:consultorioequipo1/data/recursos/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 late final List<CameraDescription> cameras;
 
@@ -27,14 +35,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Juzgado> juzgados = [];
   List<Legitario> legitarios = [];
   List<Procurador> procuradores = [];
+  List<Expediente> expedientes = [];
   String searchQuery = '';
   bool isLoading = true;
   Map<String, int> estadisticas = {};
+  String? currentProcuradorId;
+
+  // Filtros avanzados
+  String? filterTipoCaso;
+  String? filterEstado;
+  DateTime? filterFechaDesde;
+  DateTime? filterFechaHasta;
+  String? filterDemandante;
+  String? filterDemandado;
 
   @override
   void initState() {
     super.initState();
     _cargarDatos();
+  }
+
+  void _mostrarConfirmacionLogout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.logout, color: Colors.red),
+            const SizedBox(width: 8),
+            const Text('Cerrar Sesión'),
+          ],
+        ),
+        content: const Text('¿Estás seguro de que quieres cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/login', (route) => false);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Cerrar Sesión'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _cargarDatos() async {
@@ -43,103 +96,375 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       print('🔄 Cargando datos del dashboard...');
 
-      print('📊 Cargando casos...');
-      final casosData = await CasoService.obtenerCasos();
+      final procurador = AuthService.procuradorActual;
+      if (procurador == null || procurador['id'] == null) {
+        print('❌ No hay procurador autenticado o falta ID');
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final procuradorId = procurador['id'];
+      print('🔍 Procurador actual ID: $procuradorId');
+
+      // Verificar si el ID existe en la colección de procuradores
+      final procuradorDoc = await FirebaseFirestore.instance
+          .collection('Procuradores')
+          .doc(procuradorId)
+          .get();
+
+      if (!procuradorDoc.exists) {
+        print('❌ No existe un procurador con ID $procuradorId');
+        setState(() => isLoading = false);
+        return;
+      }
+
+      print('📊 Cargando casos del procurador...');
+      final casosData = await CasoService.obtenerCasosPorProcurador(
+        procuradorId,
+      );
       print('✅ Casos cargados: ${casosData.length}');
 
-      print('🏷️ Cargando tipos de caso...');
-      final tiposCasoData = await CasoService.obtenerTiposCaso();
-      print('✅ Tipos de caso cargados: ${tiposCasoData.length}');
-
-      print('⚖️ Cargando juzgados...');
-      final juzgadosData = await CasoService.obtenerJuzgados();
-      print('✅ Juzgados cargados: ${juzgadosData.length}');
-
-      print('👥 Cargando legitarios...');
-      final legitariosData = await CasoService.obtenerLegitarios();
-      print('✅ Legitarios cargados: ${legitariosData.length}');
-
-      print('👨‍💼 Cargando procuradores...');
-      final procuradoresData = await CasoService.obtenerProcuradores();
-      print('✅ Procuradores cargados: ${procuradoresData.length}');
-
-      print('📈 Cargando estadísticas...');
-      final estadisticasData = await CasoService.obtenerEstadisticas();
-      print('✅ Estadísticas cargadas');
+      // Debug: imprimir los casos obtenidos
+      for (final caso in casosData) {
+        print('Caso: ${caso.nombreCaso}, Estado: ${caso.estado}');
+        print('Expediente ID: ${caso.expedienteId}');
+        if (caso.expediente != null) {
+          print('Expediente: ${caso.expediente!.nombreExpediente}');
+        }
+        print('Archivos: ${caso.archivos.length}');
+      }
 
       setState(() {
         casos = casosData;
-        tiposCaso = tiposCasoData;
-        juzgados = juzgadosData;
-        legitarios = legitariosData;
-        procuradores = procuradoresData;
-        estadisticas = estadisticasData;
         isLoading = false;
       });
-
-      print('🎯 Todos los datos cargados exitosamente');
     } catch (e) {
       print('❌ Error al cargar datos: $e');
       setState(() => isLoading = false);
     }
   }
 
-  Future<void> _cargarDatosSinFiltros() async {
-    setState(() => isLoading = true);
-
-    try {
-      final casosData = await CasoService.obtenerTodosLosCasos();
-      final tiposCasoData = await CasoService.obtenerTodosLosTiposCaso();
-      final juzgadosData = await CasoService.obtenerTodosLosJuzgados();
-      final legitariosData = await CasoService.obtenerTodosLosLegitarios();
-      final procuradoresData = await CasoService.obtenerTodosLosProcuradores();
-
-      // Filtrar manualmente los datos no eliminados
-      final casosFiltrados = casosData.where((c) => !c.eliminado).toList();
-      final tiposFiltrados = tiposCasoData.where((t) => !t.eliminado).toList();
-      final juzgadosFiltrados = juzgadosData
-          .where((j) => !j.eliminado)
-          .toList();
-      final legitariosFiltrados = legitariosData
-          .where((l) => !l.eliminado)
-          .toList();
-      final procuradoresFiltrados = procuradoresData
-          .where((p) => !p.eliminado)
-          .toList();
-
-      // Calcular estadísticas manualmente
-      final estadisticasData = {
-        'pendientes': casosFiltrados
-            .where((c) => c.estado == 'pendiente')
-            .length,
-        'en_proceso': casosFiltrados
-            .where((c) => c.estado == 'en proceso')
-            .length,
-        'finalizados': casosFiltrados
-            .where((c) => c.estado == 'finalizado')
-            .length,
-        'retrasados': casosFiltrados
-            .where((c) => c.estado == 'retrasado')
-            .length,
-        'total': casosFiltrados.length,
-      };
-
-      setState(() {
-        casos = casosFiltrados;
-        tiposCaso = tiposFiltrados;
-        juzgados = juzgadosFiltrados;
-        legitarios = legitariosFiltrados;
-        procuradores = procuradoresFiltrados;
-        estadisticas = estadisticasData;
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Error al cargar datos sin filtros: $e');
-      setState(() => isLoading = false);
-    }
+  String _formatearFecha(DateTime fecha) {
+    return DateFormat('dd/MM/yyyy').format(fecha);
   }
 
-  void _cambiarEstado(Caso caso) async {
+  Future<String?> _obtenerProcuradorIdActual() async {
+    final procuradorActual = AuthService.procuradorActual;
+    if (procuradorActual == null || procuradorActual['id'] == null) {
+      print('⚠️ Procurador no autenticado');
+      return null;
+    }
+    return procuradorActual['id'] as String;
+  }
+
+  List<Caso> _actualizarEstadosSegunFechas(List<Caso> casos) {
+    final ahora = DateTime.now();
+    return casos.map((caso) {
+      if (caso.estado != 'finalizado') {
+        if (caso.plazo.isBefore(ahora)) {
+          return caso.copyWith(estado: 'retrasado');
+        } else {
+          return caso.copyWith(estado: 'pendiente');
+        }
+      }
+      return caso;
+    }).toList();
+  }
+
+  Map<String, int> _calcularEstadisticas(List<Caso> casos) {
+    return {
+      'pendientes': casos.where((c) => c.estado == 'pendiente').length,
+      'en_proceso': casos.where((c) => c.estado == 'en proceso').length,
+      'finalizados': casos.where((c) => c.estado == 'finalizado').length,
+      'retrasados': casos.where((c) => c.estado == 'retrasado').length,
+      'total': casos.length,
+    };
+  }
+
+  void _mostrarFiltrosAvanzados() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Filtros Avanzados',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  DropdownButtonFormField<String>(
+                    value: filterTipoCaso,
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo de caso',
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Todos')),
+                      ...tiposCaso
+                          .map(
+                            (tipo) => DropdownMenuItem(
+                              value: tipo.id,
+                              child: Text(tipo.nombreCaso),
+                            ),
+                          )
+                          .toList(),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => filterTipoCaso = value),
+                  ),
+
+                  DropdownButtonFormField<String>(
+                    value: filterEstado,
+                    decoration: const InputDecoration(labelText: 'Estado'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Todos')),
+                      const DropdownMenuItem(
+                        value: 'pendiente',
+                        child: Text('Pendiente'),
+                      ),
+                      const DropdownMenuItem(
+                        value: 'en proceso',
+                        child: Text('En proceso'),
+                      ),
+                      const DropdownMenuItem(
+                        value: 'finalizado',
+                        child: Text('Finalizado'),
+                      ),
+                      const DropdownMenuItem(
+                        value: 'retrasado',
+                        child: Text('Retrasado'),
+                      ),
+                    ],
+                    onChanged: (value) => setState(() => filterEstado = value),
+                  ),
+
+                  ListTile(
+                    title: const Text('Fecha desde'),
+                    subtitle: Text(
+                      filterFechaDesde == null
+                          ? 'Seleccionar fecha'
+                          : _formatearFecha(filterFechaDesde!),
+                    ),
+                    onTap: () async {
+                      final fecha = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (fecha != null) {
+                        setState(() => filterFechaDesde = fecha);
+                      }
+                    },
+                  ),
+
+                  ListTile(
+                    title: const Text('Fecha hasta'),
+                    subtitle: Text(
+                      filterFechaHasta == null
+                          ? 'Seleccionar fecha'
+                          : _formatearFecha(filterFechaHasta!),
+                    ),
+                    onTap: () async {
+                      final fecha = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (fecha != null) {
+                        setState(() => filterFechaHasta = fecha);
+                      }
+                    },
+                  ),
+
+                  DropdownButtonFormField<String>(
+                    value: filterDemandante,
+                    decoration: const InputDecoration(labelText: 'Demandante'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Todos')),
+                      ...legitarios
+                          .where((l) => l.rolId == 'demandante')
+                          .map(
+                            (legitario) => DropdownMenuItem(
+                              value: legitario.id,
+                              child: Text(legitario.nombre),
+                            ),
+                          )
+                          .toList(),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => filterDemandante = value),
+                  ),
+
+                  DropdownButtonFormField<String>(
+                    value: filterDemandado,
+                    decoration: const InputDecoration(labelText: 'Demandado'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Todos')),
+                      ...legitarios
+                          .where((l) => l.rolId == 'demandado')
+                          .map(
+                            (legitario) => DropdownMenuItem(
+                              value: legitario.id,
+                              child: Text(legitario.nombre),
+                            ),
+                          )
+                          .toList(),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => filterDemandado = value),
+                  ),
+
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            filterTipoCaso = null;
+                            filterEstado = null;
+                            filterFechaDesde = null;
+                            filterFechaHasta = null;
+                            filterDemandante = null;
+                            filterDemandado = null;
+                          });
+                        },
+                        child: const Text('Limpiar'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          setState(() {});
+                        },
+                        child: const Text('Aplicar'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _obtenerNombreTipoCaso(String tipoCasoId) {
+    if (tipoCasoId.isEmpty) return 'Sin tipo';
+    final tipo = tiposCaso.firstWhere(
+      (t) => t.id == tipoCasoId,
+      orElse: () => TipoCaso(nombreCaso: 'Desconocido', descripcion: ''),
+    );
+    return tipo.nombreCaso;
+  }
+
+  String _obtenerNombreProcurador(String procuradorId) {
+    if (procuradorId.isEmpty) return 'Sin procurador';
+    final procurador = procuradores.firstWhere(
+      (p) => p.id == procuradorId,
+      orElse: () => Procurador(
+        nombre: 'Desconocido',
+        usuario: '',
+        password: '',
+        email: '',
+        telefono: '',
+        nCuenta: '',
+        creadoEl: DateTime.now(),
+        actualizadoEl: DateTime.now(),
+      ),
+    );
+    return procurador.nombre;
+  }
+
+  String _obtenerNombreJuzgado(String juzgadoId) {
+    if (juzgadoId.isEmpty) return 'Sin juzgado';
+    final juzgado = juzgados.firstWhere(
+      (j) => j.id == juzgadoId,
+      orElse: () =>
+          Juzgado(nombreJuzgado: 'Desconocido', direccion: '', telefono: ''),
+    );
+    return juzgado.nombreJuzgado;
+  }
+
+  String _obtenerNombreLegitario(String legitarioId) {
+    if (legitarioId.isEmpty) return 'Sin legitario';
+    final legitario = legitarios.firstWhere(
+      (l) => l.id == legitarioId,
+      orElse: () =>
+          Legitario(rolId: '', nombre: 'Desconocido', email: '', telefono: ''),
+    );
+    return legitario.nombre;
+  }
+
+  List<Caso> get filteredCasos {
+    List<Caso> filtered = casos;
+
+    if (searchQuery.isNotEmpty) {
+      filtered = filtered.where((caso) {
+        final nombreCaso = caso.nombreCaso.toLowerCase();
+        final tipoCaso = _obtenerNombreTipoCaso(caso.tipocasoId).toLowerCase();
+        final procurador = _obtenerNombreProcurador(
+          caso.procuradorId,
+        ).toLowerCase();
+        final demandante = _obtenerNombreLegitario(
+          caso.demandanteId,
+        ).toLowerCase();
+        final demandado = _obtenerNombreLegitario(
+          caso.demandadoId,
+        ).toLowerCase();
+
+        return nombreCaso.contains(searchQuery.toLowerCase()) ||
+            tipoCaso.contains(searchQuery.toLowerCase()) ||
+            procurador.contains(searchQuery.toLowerCase()) ||
+            demandante.contains(searchQuery.toLowerCase()) ||
+            demandado.contains(searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    if (filterTipoCaso != null) {
+      filtered = filtered.where((c) => c.tipocasoId == filterTipoCaso).toList();
+    }
+
+    if (filterEstado != null) {
+      filtered = filtered.where((c) => c.estado == filterEstado).toList();
+    }
+
+    if (filterFechaDesde != null) {
+      filtered = filtered
+          .where((c) => c.plazo.isAfter(filterFechaDesde!))
+          .toList();
+    }
+
+    if (filterFechaHasta != null) {
+      filtered = filtered
+          .where((c) => c.plazo.isBefore(filterFechaHasta!))
+          .toList();
+    }
+
+    if (filterDemandante != null) {
+      filtered = filtered
+          .where((c) => c.demandanteId == filterDemandante)
+          .toList();
+    }
+
+    if (filterDemandado != null) {
+      filtered = filtered
+          .where((c) => c.demandadoId == filterDemandado)
+          .toList();
+    }
+
+    return filtered;
+  }
+
+  Future<void> _cambiarEstado(Caso caso) async {
     final nuevoEstado = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => Column(
@@ -170,7 +495,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         nuevoEstado,
       );
       if (success) {
-        await _cargarDatos(); // Recargar datos
+        await _cargarDatos();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Estado cambiado a: $nuevoEstado')),
@@ -178,183 +503,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
     }
-  }
-
-  String _obtenerNombreTipoCaso(String tipoCasoId) {
-    final tipo = tiposCaso.firstWhere(
-      (t) => t.id == tipoCasoId,
-      orElse: () => TipoCaso(nombreCaso: 'Desconocido', descripcion: ''),
-    );
-    return tipo.nombreCaso;
-  }
-
-  String _obtenerNombreProcurador(String procuradorId) {
-    final procurador = procuradores.firstWhere(
-      (p) => p.id == procuradorId,
-      orElse: () => Procurador(
-        nombre: 'Desconocido',
-        usuario: '',
-        password: '',
-        email: '',
-        telefono: '',
-        nCuenta: '',
-        creadoEl: DateTime.now(),
-        actualizadoEl: DateTime.now(),
-      ),
-    );
-    return procurador.nombre;
-  }
-
-  String _obtenerNombreJuzgado(String juzgadoId) {
-    final juzgado = juzgados.firstWhere(
-      (j) => j.id == juzgadoId,
-      orElse: () =>
-          Juzgado(nombreJuzgado: 'Desconocido', direccion: '', telefono: ''),
-    );
-    return juzgado.nombreJuzgado;
-  }
-
-  String _obtenerNombreLegitario(String legitarioId) {
-    final legitario = legitarios.firstWhere(
-      (l) => l.id == legitarioId,
-      orElse: () => Legitario(
-        rolId: '',
-        nombre: 'Desconocido',
-        email: '',
-        direccion: '',
-        telefono: '',
-      ),
-    );
-    return legitario.nombre;
-  }
-
-  List<Caso> get filteredCasos {
-    if (searchQuery.isEmpty) return casos;
-    return casos
-        .where(
-          (caso) =>
-              caso.nombreCaso.toLowerCase().contains(
-                searchQuery.toLowerCase(),
-              ) ||
-              _obtenerNombreTipoCaso(
-                caso.tipocasoId,
-              ).toLowerCase().contains(searchQuery.toLowerCase()) ||
-              _obtenerNombreProcurador(
-                caso.procuradorId,
-              ).toLowerCase().contains(searchQuery.toLowerCase()),
-        )
-        .toList();
-  }
-
-  Future<void> _crearDatosPrueba() async {
-    setState(() => isLoading = true);
-
-    try {
-      await CasoService.crearDatosPrueba();
-      await _cargarDatos(); // Recargar datos después de crear los de prueba
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Datos de prueba creados exitosamente'),
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error al crear datos de prueba: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error al crear datos de prueba: $e')),
-        );
-      }
-    } finally {
-      setState(() => isLoading = false);
-    }
-  }
-
-  /// Muestra un diálogo con los detalles de la conexión
-  void _mostrarDetallesConexion(Map<String, dynamic> resultados) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.analytics, color: Colors.blue),
-            const SizedBox(width: 8),
-            const Text('📊 Detalles de Conexión Firebase'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ...resultados.entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      entry.value == true ? Icons.check_circle : Icons.error,
-                      color: entry.value == true ? Colors.green : Colors.red,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${entry.key}: ${entry.value == true ? "✅ Funcionando" : "❌ Falló"}',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Muestra un diálogo de confirmación para logout
-  void _mostrarConfirmacionLogout() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.logout, color: Colors.red),
-            const SizedBox(width: 8),
-            const Text('Cerrar Sesión'),
-          ],
-        ),
-        content: const Text('¿Estás seguro de que quieres cerrar sesión?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Aquí puedes agregar lógica de logout si es necesario
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/login', (route) => false);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Cerrar Sesión'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -366,109 +514,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('Dashboard'),
         backgroundColor: greenColor,
         actions: [
-          // Botón para crear datos de prueba
-          IconButton(
-            icon: const Icon(Icons.add_circle),
-            onPressed: _crearDatosPrueba,
-            tooltip: 'Crear datos de prueba',
-          ),
-          // Botón para probar carga de datos
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              setState(() => isLoading = true);
-              await _cargarDatos();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Datos cargados: ${casos.length} casos, ${tiposCaso.length} tipos, ${juzgados.length} juzgados, ${legitarios.length} legitarios, ${procuradores.length} procuradores',
-                    ),
-                  ),
-                );
-              }
-            },
-            tooltip: 'Recargar datos',
-          ),
-          // Botón para diagnóstico
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            onPressed: () async {
-              final diagnostico = await CasoService.diagnosticarDatos();
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Diagnóstico Completo'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tipos de caso: ${diagnostico['tipos_caso']?['no_eliminados'] ?? 0}/${diagnostico['tipos_caso']?['total'] ?? 0}',
-                        ),
-                        Text(
-                          'Juzgados: ${diagnostico['juzgados']?['no_eliminados'] ?? 0}/${diagnostico['juzgados']?['total'] ?? 0}',
-                        ),
-                        Text(
-                          'Roles legitario: ${diagnostico['roles_legitario']?['no_eliminados'] ?? 0}/${diagnostico['roles_legitario']?['total'] ?? 0}',
-                        ),
-                        Text(
-                          'Legitarios: ${diagnostico['legitarios']?['no_eliminados'] ?? 0}/${diagnostico['legitarios']?['total'] ?? 0}',
-                        ),
-                        Text(
-                          'Procuradores: ${diagnostico['procuradores']?['no_eliminados'] ?? 0}/${diagnostico['procuradores']?['total'] ?? 0}',
-                        ),
-                        Text(
-                          'Expedientes: ${diagnostico['expedientes']?['no_eliminados'] ?? 0}/${diagnostico['expedientes']?['total'] ?? 0}',
-                        ),
-                        Text(
-                          'Casos: ${diagnostico['casos']?['no_eliminados'] ?? 0}/${diagnostico['casos']?['total'] ?? 0}',
-                        ),
-                        Text(
-                          'Archivos: ${diagnostico['archivos']?['no_eliminados'] ?? 0}/${diagnostico['archivos']?['total'] ?? 0}',
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Detalles:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        if (diagnostico['procuradores']?['datos'] != null)
-                          ...diagnostico['procuradores']['datos']
-                              .map<Widget>(
-                                (p) => Text(
-                                  '  - ${p['nombre']} (${p['eliminado'] ? 'eliminado' : 'activo'})',
-                                ),
-                              )
-                              .toList(),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cerrar'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _cargarDatosSinFiltros();
-                      },
-                      child: const Text('Cargar sin filtros'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.psychology),
-            onPressed: () async {
-              await CasoService.diagnosticarProcuradores();
-              _cargarDatos();
-            },
-          ),
-          // Botón para escanear documentos
           IconButton(
             icon: const Icon(Icons.camera_alt, size: 32),
             tooltip: 'Escanear Documento',
@@ -492,215 +537,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }
             },
           ),
-          // Botón para verificación rápida
           IconButton(
-            icon: const Icon(Icons.cloud_sync),
-            onPressed: () async {
-              try {
-                final resultados =
-                    await FirebaseService.verificarTodasLasConexiones();
-
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Row(
-                      children: [
-                        Icon(
-                          resultados.values.every((conexion) => conexion)
-                              ? Icons.check_circle
-                              : Icons.warning,
-                          color: resultados.values.every((conexion) => conexion)
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('Verificación Rápida'),
-                      ],
-                    ),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          resultados.values.every((conexion) => conexion)
-                              ? '✅ Todas las conexiones funcionan correctamente'
-                              : '⚠️  Algunas conexiones fallaron',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(height: 16),
-                        ...resultados.entries.map(
-                          (entry) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  entry.value
-                                      ? Icons.check_circle
-                                      : Icons.error,
-                                  color: entry.value
-                                      ? Colors.green
-                                      : Colors.red,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${entry.key}: ${entry.value ? "OK" : "Error"}',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cerrar'),
-                      ),
-                    ],
-                  ),
-                );
-              } catch (e) {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Row(
-                      children: [
-                        const Icon(Icons.error, color: Colors.red),
-                        const SizedBox(width: 8),
-                        const Text('Error'),
-                      ],
-                    ),
-                    content: Text('❌ Error en verificación rápida: $e'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cerrar'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-            },
-            tooltip: 'Verificación rápida Firebase',
-          ),
-          // Botón para verificación exhaustiva
-          IconButton(
-            icon: const Icon(Icons.analytics),
-            onPressed: () async {
-              try {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const AlertDialog(
-                    content: Row(
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(width: 16),
-                        Text('Ejecutando prueba exhaustiva...'),
-                      ],
-                    ),
-                  ),
-                );
-
-                final resultados =
-                    await FirebaseService.probarConexionExhaustiva();
-
-                Navigator.of(context).pop();
-
-                final exitosas = resultados.values
-                    .where((v) => v == true)
-                    .length;
-                final total = resultados.length;
-                final porcentaje = (exitosas / total * 100).toStringAsFixed(1);
-
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Row(
-                      children: [
-                        Icon(
-                          exitosas == total
-                              ? Icons.check_circle
-                              : Icons.analytics,
-                          color: exitosas == total
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('Prueba Exhaustiva'),
-                      ],
-                    ),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '📊 Resultados: $exitosas/$total ($porcentaje%)',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ...resultados.entries.map(
-                          (entry) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  entry.value == true
-                                      ? Icons.check_circle
-                                      : Icons.error,
-                                  color: entry.value == true
-                                      ? Colors.green
-                                      : Colors.red,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    '${entry.key}: ${entry.value == true ? "✅" : "❌"}',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cerrar'),
-                      ),
-                    ],
-                  ),
-                );
-              } catch (e) {
-                Navigator.of(context).pop(); // Cerrar diálogo de carga
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Row(
-                      children: [
-                        const Icon(Icons.error, color: Colors.red),
-                        const SizedBox(width: 8),
-                        const Text('Error'),
-                      ],
-                    ),
-                    content: Text('❌ Error en prueba exhaustiva: $e'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cerrar'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-            },
-            tooltip: 'Prueba exhaustiva Firebase',
+            icon: const Icon(Icons.logout),
+            onPressed: _mostrarConfirmacionLogout,
           ),
         ],
       ),
@@ -708,101 +547,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ExpedientesScreen(),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.folder_open, color: Colors.grey),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Expedientes',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 20),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   alignment: WrapAlignment.center,
                   children: [
-                    _DashboardCard(
+                    DashboardCard(
                       count: estadisticas['total'] ?? 0,
                       label: 'Casos totales',
                       color: Colors.green,
                     ),
-                    _DashboardCard(
+                    DashboardCard(
                       count: estadisticas['pendientes'] ?? 0,
                       label: 'Pendientes',
                       color: Colors.orange,
                     ),
-                    _DashboardCard(
+                    DashboardCard(
                       count: estadisticas['en_proceso'] ?? 0,
                       label: 'En proceso',
                       color: Colors.blue,
                     ),
-                    _DashboardCard(
+                    DashboardCard(
                       count: estadisticas['finalizados'] ?? 0,
                       label: 'Finalizados',
                       color: Colors.green,
                     ),
-                    _DashboardCard(
+                    DashboardCard(
                       count: estadisticas['retrasados'] ?? 0,
                       label: 'Retrasados',
                       color: Colors.red,
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CaseFormScreen(),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CaseFormScreen(),
+                        ),
+                      );
+                      if (result == true) {
+                        await _cargarDatos();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: greenColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
                       ),
-                    );
-                    if (result == true) {
-                      await _cargarDatos(); // Recargar datos
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Nuevo Caso',
+                      style: TextStyle(fontSize: 16),
                     ),
                   ),
-                  child: const Text('Nuevo Caso'),
                 ),
 
                 Padding(
@@ -810,32 +618,100 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     horizontal: 16.0,
                     vertical: 10,
                   ),
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      labelText: 'Buscar caso...',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onChanged: (value) => setState(() => searchQuery = value),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            labelText: 'Buscar caso...',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.filter_list),
+                              onPressed: _mostrarFiltrosAvanzados,
+                            ),
+                          ),
+                          onChanged: (value) =>
+                              setState(() => searchQuery = value),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
+                if (filterTipoCaso != null ||
+                    filterEstado != null ||
+                    filterFechaDesde != null ||
+                    filterFechaHasta != null ||
+                    filterDemandante != null ||
+                    filterDemandado != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (filterTipoCaso != null)
+                          Chip(
+                            label: Text(
+                              'Tipo: ${_obtenerNombreTipoCaso(filterTipoCaso!)}',
+                            ),
+                            onDeleted: () =>
+                                setState(() => filterTipoCaso = null),
+                          ),
+                        if (filterEstado != null)
+                          Chip(
+                            label: Text('Estado: ${filterEstado!}'),
+                            onDeleted: () =>
+                                setState(() => filterEstado = null),
+                          ),
+                        if (filterFechaDesde != null)
+                          Chip(
+                            label: Text(
+                              'Desde: ${_formatearFecha(filterFechaDesde!)}',
+                            ),
+                            onDeleted: () =>
+                                setState(() => filterFechaDesde = null),
+                          ),
+                        if (filterFechaHasta != null)
+                          Chip(
+                            label: Text(
+                              'Hasta: ${_formatearFecha(filterFechaHasta!)}',
+                            ),
+                            onDeleted: () =>
+                                setState(() => filterFechaHasta = null),
+                          ),
+                        if (filterDemandante != null)
+                          Chip(
+                            label: Text(
+                              'Demandante: ${_obtenerNombreLegitario(filterDemandante!)}',
+                            ),
+                            onDeleted: () =>
+                                setState(() => filterDemandante = null),
+                          ),
+                        if (filterDemandado != null)
+                          Chip(
+                            label: Text(
+                              'Demandado: ${_obtenerNombreLegitario(filterDemandado!)}',
+                            ),
+                            onDeleted: () =>
+                                setState(() => filterDemandado = null),
+                          ),
+                      ],
+                    ),
+                  ),
+
                 Expanded(
                   child: ListView.builder(
                     itemCount: filteredCasos.length,
                     itemBuilder: (context, index) {
                       final caso = filteredCasos[index];
-                      final estaRetrasado =
-                          caso.plazo.isBefore(DateTime.now()) &&
-                          caso.estado != 'finalizado';
-                      final estadoDisplay = estaRetrasado
-                          ? 'retrasado'
-                          : caso.estado;
                       final estadoColor = {
                         'pendiente': Colors.orange,
                         'en proceso': Colors.blue,
                         'finalizado': Colors.green,
                         'retrasado': Colors.red,
-                      }[estadoDisplay]!;
+                      }[caso.estado]!;
 
                       return GestureDetector(
                         onLongPress: () => _cambiarEstado(caso),
@@ -846,8 +722,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           child: ListTile(
                             title: Text(caso.nombreCaso),
-                            subtitle: Text(
-                              '${_obtenerNombreTipoCaso(caso.tipocasoId)} • ${caso.plazo.day}/${caso.plazo.month}/${caso.plazo.year}',
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(_obtenerNombreTipoCaso(caso.tipocasoId)),
+                                Text('Plazo: ${_formatearFecha(caso.plazo)}'),
+                                Text(
+                                  'Demandante: ${_obtenerNombreLegitario(caso.demandanteId)}',
+                                ),
+                                Text(
+                                  'Demandado: ${_obtenerNombreLegitario(caso.demandadoId)}',
+                                ),
+                              ],
                             ),
                             trailing: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
@@ -867,7 +753,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    estadoDisplay.toUpperCase(),
+                                    caso.estado.toUpperCase(),
                                     style: TextStyle(
                                       color: estadoColor,
                                       fontWeight: FontWeight.bold,
@@ -885,45 +771,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-    );
-  }
-}
-
-class _DashboardCard extends StatelessWidget {
-  final int count;
-  final String label;
-  final Color color;
-
-  const _DashboardCard({
-    required this.count,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 120,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(label, textAlign: TextAlign.center),
-        ],
-      ),
     );
   }
 }

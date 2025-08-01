@@ -40,11 +40,184 @@ class CasoService {
         print('  - Caso: ${doc.data()['nombre_caso']} (ID: ${doc.id})');
       }
 
-      return snapshot.docs
-          .map((doc) => Caso.fromMap(doc.data(), doc.id))
-          .toList();
+      return snapshot.docs.map((doc) => Caso.fromMap(doc.data())).toList();
     } catch (e) {
       print('Error al obtener casos: $e');
+      return [];
+    }
+  }
+
+  /// Crea un nuevo legitario en Firestore
+  static Future<String?> crearLegitario(Legitario legitario) async {
+    try {
+      // 1. Primero verificar si el rol existe
+      final rolSnapshot = await _firestore
+          .collection(_rolesLegitarioCollection)
+          .where('rol', isEqualTo: legitario.rolId)
+          .where('eliminado', isEqualTo: false)
+          .get();
+
+      String rolId;
+
+      if (rolSnapshot.docs.isEmpty) {
+        // Si el rol no existe, crearlo
+        print('⚠️ Rol no encontrado, creando nuevo rol: ${legitario.rolId}');
+        final nuevoRolRef = await _firestore
+            .collection(_rolesLegitarioCollection)
+            .add({
+              'rol': legitario.rolId,
+              'eliminado': false,
+              'creado_el': FieldValue.serverTimestamp(),
+              'actualizado_el': FieldValue.serverTimestamp(),
+            });
+        rolId = nuevoRolRef.id;
+      } else {
+        // Usar el rol existente
+        rolId = rolSnapshot.docs.first.id;
+      }
+
+      // 2. Crear el legitario
+      final legitarioData = {
+        'nombre': legitario.nombre,
+        'rol_id': rolId,
+        'eliminado': false,
+        'creado_el': FieldValue.serverTimestamp(),
+        'actualizado_el': FieldValue.serverTimestamp(),
+      };
+
+      // Campos opcionales
+      if (legitario.email != null) {
+        legitarioData['email'] = legitario.email;
+      }
+      if (legitario.telefono != null) {
+        legitarioData['telefono'] = legitario.telefono;
+      }
+
+      print('📝 Creando legitario con datos:');
+      print(legitarioData);
+
+      final legitarioRef = await _firestore
+          .collection(_legitariosCollection)
+          .add(legitarioData);
+
+      print('✅ Legitario creado exitosamente con ID: ${legitarioRef.id}');
+      return legitarioRef.id;
+    } catch (e) {
+      print('❌ Error al crear legitario: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>> obtenerEstadisticasPorProcurador(
+    String procuradorId,
+  ) async {
+    final casos = await obtenerCasosPorProcurador(procuradorId);
+
+    // Simple example: contar por estado
+    final Map<String, int> estadoCount = {};
+    for (final caso in casos) {
+      final estado = caso.estado ?? 'desconocido';
+      estadoCount[estado] = (estadoCount[estado] ?? 0) + 1;
+    }
+
+    return {'total': casos.length, 'porEstado': estadoCount};
+  }
+
+  Future<Expediente?> _obtenerExpediente(String expedienteId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Expedientes')
+          .doc(expedienteId)
+          .get();
+      return doc.exists ? Expediente.fromMap(doc.data()!, doc.id) : null;
+    } catch (e) {
+      print('Error obteniendo expediente $expedienteId: $e');
+      return null;
+    }
+  }
+
+  Future<List<ArchivoExpediente>> _obtenerArchivosExpediente(
+    String expedienteId,
+  ) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('ArchivoExpediente')
+          .where('expediente_id', isEqualTo: expedienteId)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => ArchivoExpediente.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error obteniendo archivos para expediente $expedienteId: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Caso>> obtenerCasosPorProcurador(
+    String procuradorId,
+  ) async {
+    try {
+      print('🔍 Buscando casos para procurador: $procuradorId');
+
+      final query = _firestore
+          .collection(_casosCollection)
+          .where('procurador_id', isEqualTo: procuradorId)
+          .where('eliminado', isEqualTo: false);
+
+      final snapshot = await query.get();
+      print('📦 Documentos encontrados: ${snapshot.docs.length}');
+
+      final casos = <Caso>[];
+
+      for (final doc in snapshot.docs) {
+        print('\n📄 Procesando caso ID: ${doc.id}');
+        print('📋 Datos del caso: ${doc.data()}');
+
+        // Cargar expediente relacionado
+        Expediente? expediente;
+        final expedienteId = doc['expediente_id'];
+        if (expedienteId != null) {
+          print('🔍 Buscando expediente ID: $expedienteId');
+          final expedienteDoc = await _firestore
+              .collection(_expedientesCollection)
+              .doc(expedienteId)
+              .get();
+
+          if (expedienteDoc.exists) {
+            expediente = Expediente.fromMap(
+              expedienteDoc.data()!,
+              expedienteDoc.id,
+            );
+            print('✅ Expediente encontrado: ${expediente.nombreExpediente}');
+          } else {
+            print('⚠️ Expediente no encontrado');
+          }
+        }
+
+        // Cargar archivos del expediente
+        List<ArchivoExpediente> archivos = [];
+        if (expedienteId != null) {
+          print('🔍 Buscando archivos para expediente: $expedienteId');
+          archivos = await obtenerArchivosExpediente(expedienteId);
+          print('📁 Archivos encontrados: ${archivos.length}');
+        }
+
+        // Crear caso con relaciones
+        final caso = Caso.fromMap(
+          doc.data(),
+          doc.id,
+        ).copyWith(expediente: expediente, archivos: archivos);
+
+        casos.add(caso);
+        print('✅ Caso agregado: ${caso.nombreCaso}');
+      }
+
+      return casos;
+    } catch (e) {
+      print('❌ Error al obtener casos por procurador: $e');
+      print('❌ Stack trace: ${e is Error ? e.stackTrace : ''}');
       return [];
     }
   }
@@ -109,28 +282,15 @@ class CasoService {
 
   // ========== EXPEDIENTES ==========
 
-  /// Obtiene todos los expedientes
   static Future<List<Expediente>> obtenerExpedientes() async {
-    try {
-      final snapshot = await _firestore
-          .collection(_expedientesCollection)
-          .where('eliminado', isEqualTo: false)
-          .get();
+    final snapshot = await _firestore
+        .collection(_expedientesCollection)
+        .where('eliminado', isEqualTo: false)
+        .get();
 
-      print('📁 Expedientes encontrados: ${snapshot.docs.length}');
-      for (final doc in snapshot.docs) {
-        print(
-          '  - Expediente: ${doc.data()['nombre_expediente']} (ID: ${doc.id})',
-        );
-      }
-
-      return snapshot.docs
-          .map((doc) => Expediente.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print('Error al obtener expedientes: $e');
-      return [];
-    }
+    return snapshot.docs
+        .map((doc) => Expediente.fromMap(doc.data(), doc.id))
+        .toList();
   }
 
   /// Crea un nuevo expediente
@@ -784,9 +944,7 @@ class CasoService {
         );
       }
 
-      return snapshot.docs
-          .map((doc) => Caso.fromMap(doc.data(), doc.id))
-          .toList();
+      return snapshot.docs.map((doc) => Caso.fromMap(doc.data())).toList();
     } catch (e) {
       print('Error al obtener todos los casos: $e');
       return [];

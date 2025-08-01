@@ -5,7 +5,6 @@ class Legitario {
   final String rolId;
   final String nombre;
   final String email;
-  final String direccion;
   final String telefono;
   final bool eliminado;
   final DateTime? creadoEl;
@@ -16,7 +15,6 @@ class Legitario {
     required this.rolId,
     required this.nombre,
     required this.email,
-    required this.direccion,
     required this.telefono,
     this.eliminado = false,
     this.creadoEl,
@@ -29,7 +27,6 @@ class Legitario {
         rolId: map['rol_id'] ?? '',
         nombre: map['nombre'] ?? '',
         email: map['email'] ?? '',
-        direccion: map['direccion'] ?? '',
         telefono: map['telefono'] ?? '',
         eliminado: map['eliminado'] ?? false,
         creadoEl: map['creado_el'] != null
@@ -44,7 +41,6 @@ class Legitario {
     'rol_id': rolId,
     'nombre': nombre,
     'email': email,
-    'direccion': direccion,
     'telefono': telefono,
     'eliminado': eliminado,
     'creado_el': creadoEl != null
@@ -69,7 +65,6 @@ class Legitario {
       rolId: rolId ?? this.rolId,
       nombre: nombre ?? this.nombre,
       email: email ?? this.email,
-      direccion: direccion ?? this.direccion,
       telefono: telefono ?? this.telefono,
       eliminado: eliminado ?? this.eliminado,
       creadoEl: creadoEl ?? this.creadoEl,

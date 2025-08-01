@@ -59,7 +59,10 @@ class AuthService {
       }
 
       final procuradorDoc = procuradorQuery.docs.first;
-      final userData = procuradorDoc.data();
+      final userData = {
+        ...procuradorDoc.data(),
+        'id': procuradorDoc.id, // 👈 Add this line
+      };
 
       print('✅ Usuario encontrado:');
       print('   - ID: ${procuradorDoc.id}');
